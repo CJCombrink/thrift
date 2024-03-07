@@ -115,10 +115,20 @@ public:
 
   void generate_typedef(t_typedef* ttypedef) override;
   void generate_enum(t_enum* tenum) override;
-  void generate_enum_ostream_operator_decl(std::ostream& out, t_enum* tenum);
-  void generate_enum_ostream_operator(std::ostream& out, t_enum* tenum);
-  void generate_enum_to_string_helper_function_decl(std::ostream& out, t_enum* tenum);
-  void generate_enum_to_string_helper_function(std::ostream& out, t_enum* tenum);
+  void generate_enum_ostream_operator_decl(std::ostream& out,
+                                                  t_enum* tenum,
+                                                  bool gen_pure_enums);
+  void generate_enum_ostream_operator(std::ostream& out,
+                                      t_enum* tenum,
+                                      bool gen_pure_enums,
+                                      const std::string& map_name);
+  void generate_enum_to_string_helper_function_decl(std::ostream& out,
+                                                    t_enum* tenum,
+                                                    bool gen_pure_enums);
+  void generate_enum_to_string_helper_function(std::ostream& out,
+                                               t_enum* tenum,
+                                               bool gen_pure_enums,
+                                               const std::string& map_name);
   void generate_forward_declaration(t_struct* tstruct) override;
   void generate_struct(t_struct* tstruct) override { generate_cpp_struct(tstruct, false); }
   void generate_xception(t_struct* txception) override { generate_cpp_struct(txception, true); }
@@ -261,6 +271,10 @@ public:
                                    const char* prefix,
                                    const char* suffix,
                                    bool include_values);
+
+  void generate_enum_cpp17_constant_list(std::ostream& f,
+                                         const vector<t_enum_value*>& constants,
+                                         const std::string& prefix);
 
   void generate_struct_ostream_operator_decl(std::ostream& f, t_struct* tstruct);
   void generate_struct_ostream_operator(std::ostream& f, t_struct* tstruct);
@@ -485,7 +499,6 @@ void t_cpp_generator::init_generator() {
   f_types_ << "#include <functional>" << '\n';
   f_types_ << "#include <memory>" << '\n';
 
-  f_types_cpp17_ << "#include <thrift/Thrift.h>" << '\n' << '\n';
   f_types_cpp17_ << "#include <functional>" << '\n';
   f_types_cpp17_ << "#include <memory>" << '\n';
   f_types_cpp17_ << "#include <optional>" << '\n';
@@ -538,7 +551,7 @@ void t_cpp_generator::init_generator() {
   // C++17 needs a few more types that normally would come from thrift headers
   f_types_cpp17_ << "#include <map>" << '\n';
   f_types_cpp17_ << "#include <vector>" << '\n';
-  f_types_cpp17_ << "#include <string_view>" << '\n';
+  f_types_cpp17_ << "#include <string_view>" << '\n' << '\n';
   f_types_cpp17_impl_ << "#include <array>" << '\n';
 
   // for operator<<
@@ -645,6 +658,32 @@ void t_cpp_generator::generate_enum_constant_list(std::ostream& f,
 }
 
 /**
+ * Generate a C++17 map
+ *
+ * Implemented direct init since TEnumIterator used by the current
+ * generator is using a deprecated std::itorator base
+ * @param f The output stream
+ * @param constants The list of enum constants
+ * @param prefix The name of the enum as prefix for each element in constants
+ */
+void t_cpp_generator::generate_enum_cpp17_constant_list(std::ostream& f,
+                       const vector<t_enum_value*>& constants,
+                       const std::string& prefix) {
+  f << " {" << endl;
+  indent_up();
+  indent_up();
+
+  for(const t_enum_value* const item: constants) {
+    indent(f) << "{ " << prefix << item->get_name() << ", std::string_view{\""
+              << item->get_name() << "\"}}," << '\n';
+  }
+
+  indent_down();
+  indent(f) << "};" << endl;
+  indent_down();
+}
+
+/**
  * Generates code for an enumerated type. In C++, this is essentially the same
  * as the thrift definition itself, using the enum keyword in C++.
  *
@@ -663,7 +702,7 @@ void t_cpp_generator::generate_enum(t_enum* tenum) {
   f_types_ << indent() << "enum " << enum_name;
 
   generate_java_doc(f_types_cpp17_, tenum);
-  f_types_cpp17_ << "enum " << tenum->get_name();
+  f_types_cpp17_ << "enum class " << tenum->get_name();
 
   generate_enum_constant_list(f_types_, constants, "", "", true);
   generate_enum_constant_list(f_types_cpp17_, constants, "", "", true);
@@ -680,51 +719,65 @@ void t_cpp_generator::generate_enum(t_enum* tenum) {
      Generate a character array of enum names for debugging purposes.
   */
   std::string prefix = "";
+  const std::string prefix_cpp17 = tenum->get_name() + "::";
   if (!gen_pure_enums_) {
-    prefix = tenum->get_name() + "::";
+    prefix = prefix_cpp17;
   }
 
+
   f_types_impl_ << indent() << "int _k" << tenum->get_name() << "Values[] =";
-  f_types_cpp17_impl_ << indent() << "constexpr std::array " << tenum->get_name() << "ValuesArray =";
   generate_enum_constant_list(f_types_impl_, constants, prefix.c_str(), "", false);
-  generate_enum_constant_list(f_types_cpp17_impl_, constants, prefix.c_str(), "", false);
 
   f_types_impl_ << indent() << "const char* _k" << tenum->get_name() << "Names[] =";
-  f_types_cpp17_impl_ << indent() << "constexpr std::array " << tenum->get_name() << "NamesArray =";
   generate_enum_constant_list(f_types_impl_, constants, "\"", "\"", false);
-  generate_enum_constant_list(f_types_cpp17_impl_, constants, "\"", "\"", false);
 
-  f_types_ << indent() << "extern const std::map<int, const char*> _" << tenum->get_name()
-           << "_VALUES_TO_NAMES;" << '\n' << '\n';
-  f_types_cpp17_ << indent() << "std::map<int, std::string_view> get_" << tenum->get_name()
-                 << "_MAP();" << '\n' << '\n';
+  const std::string map_type_name
+      = std::string{"_"} + tenum->get_name() + std::string{"_VALUES_TO_NAMES"};
+  const std::string map_type_cpp17_name
+      = std::string{"get_"} + tenum->get_name() + std::string{"_map()"};
 
-  f_types_impl_ << indent() << "const std::map<int, const char*> _" << tenum->get_name()
-                << "_VALUES_TO_NAMES(::apache::thrift::TEnumIterator(" << constants.size() << ", _k"
+  f_types_ << indent() << "extern const std::map<int, const char*> " << map_type_name << ";" << '\n' << '\n';
+  f_types_cpp17_ << indent() << "const std::map<" << tenum->get_name() << ", std::string_view>& "
+                 << map_type_cpp17_name << ";" << '\n' << '\n';
+
+  f_types_impl_ << indent() << "const std::map<int, const char*> " << map_type_name
+                << "(::apache::thrift::TEnumIterator(" << constants.size() << ", _k"
                 << tenum->get_name() << "Values"
                 << ", _k" << tenum->get_name() << "Names), "
                 << "::apache::thrift::TEnumIterator(-1, nullptr, nullptr));" << '\n' << '\n';
 
-  f_types_cpp17_impl_ << indent() << "std::map<int, const char*> get_" << tenum->get_name()
-                      << "_MAP() {" << '\n'
-                      << indent() << "  static const std::map<int, const char*> mapping(::apache::thrift::TEnumIterator("
-                      << constants.size() << ", " << tenum->get_name() << "ValuesArray.data()" << ", "
-                      << tenum->get_name() << "NamesArray.data()), ::apache::thrift::TEnumIterator(-1, nullptr, nullptr));" << '\n'
-                      << indent() << "  return mapping;\n}" << '\n' << '\n';
+  f_types_cpp17_impl_ << indent() << "const std::map<" << tenum->get_name()
+                      << ", std::string_view>& " << map_type_cpp17_name << " {" << '\n'
+                      << indent() << "  static const std::map<" << tenum->get_name()
+                      << ", std::string_view> mapping";
+  generate_enum_cpp17_constant_list(f_types_cpp17_impl_, constants, prefix_cpp17);
+  f_types_cpp17_impl_ << indent() << "  return mapping;\n}" << '\n' << '\n';
 
-  generate_enum_ostream_operator_decl(f_types_, tenum);
-  generate_enum_ostream_operator(f_types_impl_, tenum);
+  generate_enum_ostream_operator_decl(f_types_, tenum, gen_pure_enums_);
+  if (!has_custom_ostream(tenum)) {
+    generate_enum_ostream_operator(f_types_impl_, tenum, gen_pure_enums_, map_type_name);
+  }
 
-  generate_enum_to_string_helper_function_decl(f_types_, tenum);
-  generate_enum_to_string_helper_function(f_types_impl_, tenum);
+  generate_enum_ostream_operator_decl(f_types_cpp17_, tenum, true);
+  if (!has_custom_ostream(tenum)) {
+    generate_enum_ostream_operator(f_types_cpp17_impl_, tenum, true, map_type_cpp17_name);
+  }
+
+  generate_enum_to_string_helper_function_decl(f_types_, tenum, gen_pure_enums_);
+  generate_enum_to_string_helper_function(f_types_impl_, tenum, gen_pure_enums_, map_type_name);
+
+  generate_enum_to_string_helper_function_decl(f_types_cpp17_, tenum, true);
+  generate_enum_to_string_helper_function(f_types_cpp17_impl_, tenum, true, map_type_cpp17_name);
 
   has_members_ = true;
 }
 
-void t_cpp_generator::generate_enum_ostream_operator_decl(std::ostream& out, t_enum* tenum) {
+void t_cpp_generator::generate_enum_ostream_operator_decl(std::ostream& out,
+                                                          t_enum* tenum,
+                                                          bool gen_pure_enums) {
 
   out << "std::ostream& operator<<(std::ostream& out, const ";
-  if (gen_pure_enums_) {
+  if (gen_pure_enums) {
     out << tenum->get_name();
   } else {
     out << tenum->get_name() << "::type&";
@@ -733,42 +786,40 @@ void t_cpp_generator::generate_enum_ostream_operator_decl(std::ostream& out, t_e
   out << '\n';
 }
 
-void t_cpp_generator::generate_enum_ostream_operator(std::ostream& out, t_enum* tenum) {
-
-  // If we've been told the consuming application will provide an ostream
-  // operator definition then we only make a declaration:
-
-  if (!has_custom_ostream(tenum)) {
-    out << "std::ostream& operator<<(std::ostream& out, const ";
-    if (gen_pure_enums_) {
-      out << tenum->get_name();
-    } else {
-      out << tenum->get_name() << "::type&";
-    }
-    out << " val) ";
-    scope_up(out);
-
-    out << indent() << "std::map<int, const char*>::const_iterator it = _"
-             << tenum->get_name() << "_VALUES_TO_NAMES.find(val);" << '\n';
-    out << indent() << "if (it != _" << tenum->get_name() << "_VALUES_TO_NAMES.end()) {" << '\n';
-    indent_up();
-    out << indent() << "out << it->second;" << '\n';
-    indent_down();
-    out << indent() << "} else {" << '\n';
-    indent_up();
-    out << indent() << "out << static_cast<int>(val);" << '\n';
-    indent_down();
-    out << indent() << "}" << '\n';
-
-    out << indent() << "return out;" << '\n';
-    scope_down(out);
-    out << '\n';
+void t_cpp_generator::generate_enum_ostream_operator(std::ostream& out,
+                                                     t_enum* tenum,
+                                                     bool gen_pure_enums,
+                                                     const std::string& map_name) {
+  out << "std::ostream& operator<<(std::ostream& out, const ";
+  if (gen_pure_enums) {
+    out << tenum->get_name();
+  } else {
+    out << tenum->get_name() << "::type&";
   }
+  out << " val) ";
+  scope_up(out);
+
+  out << indent() <<  "const auto it = " << map_name << ".find(val);" << '\n';
+  out << indent() << "if (it != " << map_name << ".end()) {" << '\n';
+  indent_up();
+  out << indent() << "out << it->second;" << '\n';
+  indent_down();
+  out << indent() << "} else {" << '\n';
+  indent_up();
+  out << indent() << "out << static_cast<int>(val);" << '\n';
+  indent_down();
+  out << indent() << "}" << '\n';
+
+  out << indent() << "return out;" << '\n';
+  scope_down(out);
+  out << "" << '\n';
 }
 
-void t_cpp_generator::generate_enum_to_string_helper_function_decl(std::ostream& out, t_enum* tenum) {
+void t_cpp_generator::generate_enum_to_string_helper_function_decl(std::ostream& out,
+                                                                   t_enum* tenum,
+                                                                   bool gen_pure_enums) {
   out << "std::string to_string(const ";
-  if (gen_pure_enums_) {
+  if (gen_pure_enums) {
     out << tenum->get_name();
   } else {
     out << tenum->get_name() << "::type&";
@@ -777,10 +828,13 @@ void t_cpp_generator::generate_enum_to_string_helper_function_decl(std::ostream&
   out << '\n';
 }
 
-void t_cpp_generator::generate_enum_to_string_helper_function(std::ostream& out, t_enum* tenum) {
+void t_cpp_generator::generate_enum_to_string_helper_function(std::ostream& out,
+                                                              t_enum* tenum,
+                                                              bool gen_pure_enums,
+                                                     const std::string& map_name) {
   if (!has_custom_ostream(tenum)) {
     out << "std::string to_string(const ";
-    if (gen_pure_enums_) {
+    if (gen_pure_enums) {
       out << tenum->get_name();
     } else {
       out << tenum->get_name() << "::type&";
@@ -788,9 +842,8 @@ void t_cpp_generator::generate_enum_to_string_helper_function(std::ostream& out,
     out << " val) " ;
     scope_up(out);
 
-    out << indent() << "std::map<int, const char*>::const_iterator it = _"
-             << tenum->get_name() << "_VALUES_TO_NAMES.find(val);" << '\n';
-    out << indent() << "if (it != _" << tenum->get_name() << "_VALUES_TO_NAMES.end()) {" << '\n';
+    out << indent() << "const auto it = " << map_name << ".find(val);" << '\n';
+    out << indent() << "if (it != " << map_name << ".end()) {" << '\n';
     indent_up();
     out << indent() << "return std::string(it->second);" << '\n';
     indent_down();
