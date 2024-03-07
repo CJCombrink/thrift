@@ -866,37 +866,53 @@ void t_cpp_generator::generate_enum_to_string_helper_function(std::ostream& out,
  */
 void t_cpp_generator::generate_consts(std::vector<t_const*> consts) {
   string f_consts_name = get_out_dir() + program_name_ + "_constants.h";
+  string f_consts_cpp17_name = get_out_dir() + program_name_ + "_constants_cpp17.h";
   ofstream_with_content_based_conditional_update f_consts;
+  ofstream_with_content_based_conditional_update f_consts_cpp17;
   if (consts.size() > 0) {
     f_consts.open(f_consts_name);
+    f_consts_cpp17.open(f_consts_cpp17_name);
 
     string f_consts_impl_name = get_out_dir() + program_name_ + "_constants.cpp";
+    string f_consts_cpp17_impl_name = get_out_dir() + program_name_ + "_constants_cpp17.cpp";
     ofstream_with_content_based_conditional_update f_consts_impl;
+    ofstream_with_content_based_conditional_update f_consts_cpp17_impl;
     f_consts_impl.open(f_consts_impl_name);
+    f_consts_cpp17_impl.open(f_consts_cpp17_impl_name);
 
     // Print header
     f_consts << autogen_comment();
+    f_consts_cpp17 << autogen_comment();
     f_consts_impl << autogen_comment();
+    f_consts_cpp17_impl << autogen_comment();
 
     // Start ifndef
     f_consts << "#ifndef " << program_name_ << "_CONSTANTS_H" << endl << "#define " << program_name_
              << "_CONSTANTS_H" << endl << endl << "#include \"" << get_include_prefix(*get_program())
              << program_name_ << "_types.h\"" << endl << endl << ns_open_ << endl << endl;
+    f_consts_cpp17 << "#pragma once\n\n#include \"" << get_include_prefix(*get_program())
+             << program_name_ << "_types.h\"\n\n" << ns_open_cpp17_ << "\n\n";
 
     f_consts_impl << "#include \"" << get_include_prefix(*get_program()) << program_name_
                   << "_constants.h\"" << endl << endl << ns_open_ << endl << endl;
+    f_consts_cpp17_impl << "#include \"" << get_include_prefix(*get_program()) << program_name_
+                  << "_constants_cpp17.h\"\n\n" << ns_open_cpp17_ << "\n\n";
 
     f_consts << "class " << program_name_ << "Constants {" << endl << " public:" << endl << "  "
              << program_name_ << "Constants();" << endl << endl;
+    f_consts_cpp17 << "class " << program_name_ << "Constants {\n public:\n  "
+             << program_name_ << "Constants();\n\n";
     indent_up();
     vector<t_const*>::iterator c_iter;
     for (c_iter = consts.begin(); c_iter != consts.end(); ++c_iter) {
       string name = (*c_iter)->get_name();
       t_type* type = (*c_iter)->get_type();
       f_consts << indent() << type_name(type) << " " << name << ";" << endl;
+      f_consts_cpp17 << indent() << "inline const " << type_name(type) << " " << name << " = " << (*c_iter)->get_value() << ";" << endl;
     }
     indent_down();
     f_consts << "};" << endl;
+    f_consts_cpp17 << "};\n";
 
     f_consts_impl << "const " << program_name_ << "Constants g_" << program_name_ << "_constants;"
                   << endl << endl << program_name_ << "Constants::" << program_name_
@@ -913,6 +929,8 @@ void t_cpp_generator::generate_consts(std::vector<t_const*> consts) {
 
     f_consts << endl << "extern const " << program_name_ << "Constants g_" << program_name_
              << "_constants;" << endl << endl << ns_close_ << endl << endl << "#endif" << endl;
+    f_consts_cpp17 << "\nextern const " << program_name_ << "Constants g_" << program_name_
+             << "_constants;\n\n" << ns_close_cpp17_ << "\n";
     f_consts.close();
 
     f_consts_impl << endl << ns_close_ << endl << endl;
