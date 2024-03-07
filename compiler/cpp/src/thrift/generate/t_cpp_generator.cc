@@ -68,6 +68,7 @@ public:
     gen_moveable_ = false;
     gen_no_ostream_operators_ = false;
     gen_no_skeleton_ = false;
+    gen_pure_cpp17_ = false;
     has_members_ = false;
 
     for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
@@ -90,6 +91,8 @@ public:
         gen_no_ostream_operators_ = true;
       } else if ( iter->first.compare("no_skeleton") == 0) {
         gen_no_skeleton_ = true;
+      } else if ( iter->first.compare("pure_cpp17") == 0) {
+        gen_pure_cpp17_ = true;
       } else {
         throw "unknown option cpp:" + iter->first;
       }
@@ -233,8 +236,8 @@ public:
    */
 
   std::string namespace_prefix(std::string ns);
-  std::string namespace_open(std::string ns);
-  std::string namespace_close(std::string ns);
+  static std::string namespace_open(std::string ns, bool cpp17);
+  static std::string namespace_close(std::string ns, bool cpp17);
   std::string type_name(t_type* ttype, bool in_typedef = false, bool arg = false);
   std::string base_type_name(t_base_type::t_base tbase);
   std::string declare_field(t_field* tfield,
@@ -366,6 +369,11 @@ private:
    */
   bool gen_no_skeleton_;
 
+   /**
+   * True if we should generate pure C++17 types.
+   */
+  bool gen_pure_cpp17_;
+
   /**
    * True if thrift has member(s)
    */
@@ -484,8 +492,8 @@ void t_cpp_generator::init_generator() {
   f_types_impl_ << "#include <thrift/TToString.h>" << endl << endl;
 
   // Open namespace
-  ns_open_ = namespace_open(program_->get_namespace("cpp"));
-  ns_close_ = namespace_close(program_->get_namespace("cpp"));
+  ns_open_ = namespace_open(program_->get_namespace("cpp"), false);
+  ns_close_ = namespace_close(program_->get_namespace("cpp"), false);
 
   f_types_ << ns_open_ << endl << endl;
 
@@ -4347,26 +4355,35 @@ string t_cpp_generator::namespace_prefix(string ns) {
  * Opens namespace.
  *
  * @param ns The namespace, w/ periods in it
+ * @param cpp17 If the namespace must use C++17 nested namespaces
  * @return Namespaces
  */
-string t_cpp_generator::namespace_open(string ns) {
+string t_cpp_generator::namespace_open(string ns, bool cpp17) {
   if (ns.size() == 0) {
-    return "";
+    return string{};
   }
-  string result = "";
-  string separator = "";
+
+  std::vector<std::string> parts;
   string::size_type loc;
   while ((loc = ns.find(".")) != string::npos) {
-    result += separator;
-    result += "namespace ";
-    result += ns.substr(0, loc);
-    result += " {";
-    separator = " ";
+    parts.push_back(ns.substr(0, loc));
     ns = ns.substr(loc + 1);
   }
   if (ns.size() > 0) {
-    result += separator + "namespace " + ns + " {";
+    parts.push_back(ns);
   }
+
+  std::string result = "namespace ";
+  const std::string separator = cpp17? "::": " { namespace ";
+  const std::string last = parts.back();
+  parts.pop_back();
+  for(const std::string& part: parts) {
+    result += part;
+    result += separator;
+  }
+  result += last;
+  result += " {";
+
   return result;
 }
 
@@ -4374,18 +4391,22 @@ string t_cpp_generator::namespace_open(string ns) {
  * Closes namespace.
  *
  * @param ns The namespace, w/ periods in it
+ * @param cpp17 If the closing namespace must use C++17 nested namespaces
  * @return Namespaces
  */
-string t_cpp_generator::namespace_close(string ns) {
+string t_cpp_generator::namespace_close(string ns, bool cpp17) {
   if (ns.size() == 0) {
-    return "";
+    return string{};
   }
   string result = "}";
-  string::size_type loc;
-  while ((loc = ns.find(".")) != string::npos) {
-    result += "}";
-    ns = ns.substr(loc + 1);
+  if ( !cpp17) {
+    string::size_type loc;
+    while ((loc = ns.find(".")) != string::npos) {
+        result += "}";
+        ns = ns.substr(loc + 1);
+    }
   }
+
   result += " // namespace";
   return result;
 }
@@ -4771,4 +4792,5 @@ THRIFT_REGISTER_GENERATOR(
     "    moveable_types:  Generate move constructors and assignment operators.\n"
     "    no_ostream_operators:\n"
     "                     Omit generation of ostream definitions.\n"
-    "    no_skeleton:     Omits generation of skeleton.\n")
+    "    no_skeleton:     Omits generation of skeleton.\n"
+    "    pure_cpp17:      Generate pure C++17 types along with old types.\n")
