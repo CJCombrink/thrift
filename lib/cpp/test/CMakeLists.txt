@@ -392,5 +392,5 @@ add_custom_command(OUTPUT gen-cpp/OneWayService.cpp gen-cpp/OneWayTest_types.h g
 )
 
 add_custom_command(OUTPUT gen-cpp/ChildService.cpp gen-cpp/ChildService.h gen-cpp/ParentService.cpp gen-cpp/ParentService.h gen-cpp/proc_types.cpp gen-cpp/proc_types.h
-    COMMAND ${THRIFT_COMPILER} --gen cpp:templates,cob_style ${CMAKE_CURRENT_SOURCE_DIR}/processor/proc.thrift
+    COMMAND ${THRIFT_COMPILER} --gen cpp:templates,cob_style,cpp17 ${CMAKE_CURRENT_SOURCE_DIR}/processor/proc.thrift
 )
