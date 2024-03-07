@@ -34,6 +34,9 @@ BISON_TARGET(thrifty ${CMAKE_CURRENT_SOURCE_DIR}/src/thrift/thrifty.yy ${CMAKE_C
 FLEX_TARGET(thriftl ${CMAKE_CURRENT_SOURCE_DIR}/src/thrift/thriftl.ll ${CMAKE_CURRENT_BINARY_DIR}/thrift/thriftl.cc)
 ADD_FLEX_BISON_DEPENDENCY(thriftl thrifty)
 
+# For tools like clangd that needs this
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(parse_SOURCES
     ${CMAKE_CURRENT_BINARY_DIR}/thrift/thrifty.cc
     ${CMAKE_CURRENT_BINARY_DIR}/thrift/thriftl.cc
