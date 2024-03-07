@@ -91,7 +91,7 @@ public:
         gen_no_ostream_operators_ = true;
       } else if ( iter->first.compare("no_skeleton") == 0) {
         gen_no_skeleton_ = true;
-      } else if ( iter->first.compare("pure_cpp17") == 0) {
+      } else if ( iter->first.compare("cpp17") == 0) {
         gen_pure_cpp17_ = true;
       } else {
         throw "unknown option cpp:" + iter->first;
@@ -387,6 +387,13 @@ private:
   std::string ns_close_;
 
   /**
+   * Strings for C++17 namespace, computed once up front then used directly
+   */
+
+  std::string ns_open_cpp17_;
+  std::string ns_close_cpp17_;
+
+  /**
    * File streams, stored here to avoid passing them as parameters to every
    * function.
    */
@@ -394,6 +401,8 @@ private:
   ofstream_with_content_based_conditional_update f_types_;
   ofstream_with_content_based_conditional_update f_types_impl_;
   ofstream_with_content_based_conditional_update f_types_tcc_;
+  ofstream_with_content_based_conditional_update f_types_cpp17_;
+  ofstream_with_content_based_conditional_update f_types_cpp17_impl_;
   ofstream_with_content_based_conditional_update f_header_;
   ofstream_with_content_based_conditional_update f_service_;
   ofstream_with_content_based_conditional_update f_service_tcc_;
@@ -431,16 +440,30 @@ void t_cpp_generator::init_generator() {
     f_types_tcc_.open(f_types_tcc_name.c_str());
   }
 
+  if (gen_pure_cpp17_) {
+    // See above comment on not opening the streams
+    string f_types_cpp17_name = get_out_dir() + program_name_ + "_types_cpp17.h";
+    f_types_cpp17_.open(f_types_cpp17_name.c_str());
+
+    string f_types_cpp17_impl_name = get_out_dir() + program_name_ + "_types_cpp17.cpp";
+    f_types_cpp17_impl_.open(f_types_cpp17_impl_name.c_str());
+  }
+
   // Print header
   f_types_ << autogen_comment();
   f_types_impl_ << autogen_comment();
   f_types_tcc_ << autogen_comment();
+  f_types_cpp17_ << autogen_comment();
+  f_types_cpp17_impl_ << autogen_comment();
 
   // Start ifndef
   f_types_ << "#ifndef " << program_name_ << "_TYPES_H" << endl << "#define " << program_name_
            << "_TYPES_H" << endl << endl;
   f_types_tcc_ << "#ifndef " << program_name_ << "_TYPES_TCC" << endl << "#define " << program_name_
                << "_TYPES_TCC" << endl << endl;
+
+  // Start pragmas
+  f_types_cpp17_ << "#pragma once\n\n";
 
   // Include base types
   f_types_ << "#include <iosfwd>" << endl
@@ -455,6 +478,11 @@ void t_cpp_generator::init_generator() {
   f_types_ << "#include <functional>" << endl;
   f_types_ << "#include <memory>" << endl;
 
+  f_types_cpp17_ << "#include <thrift/Thrift.h>\n\n";
+  f_types_cpp17_ << "#include <functional>\n";
+  f_types_cpp17_ << "#include <memory>\n";
+  f_types_cpp17_ << "#include <optional>\n";
+
   // Include other Thrift includes
   const vector<t_program*>& includes = program_->get_includes();
   for (auto include : includes) {
@@ -465,41 +493,65 @@ void t_cpp_generator::init_generator() {
     // included files were also generated with templates enabled.
     f_types_tcc_ << "#include \"" << get_include_prefix(*include) << include->get_name()
                  << "_types.tcc\"" << endl;
+
+    // XXX(?): If gen_pure_cpp17_ is enabled, we currently assume all
+    // included files were also generated with C++17 support enabled.
+    f_types_cpp17_ << "#include \"" << get_include_prefix(*include) << include->get_name()
+             << "_types_cpp17.h\"\n";
   }
   f_types_ << endl;
+  f_types_cpp17_ << "\n";
 
   // Include custom headers
   const vector<string>& cpp_includes = program_->get_cpp_includes();
   for (const auto & cpp_include : cpp_includes) {
     if (cpp_include[0] == '<') {
       f_types_ << "#include " << cpp_include << endl;
+      f_types_cpp17_ << "#include " << cpp_include << "\n";
     } else {
       f_types_ << "#include \"" << cpp_include << "\"" << endl;
+      f_types_cpp17_ << "#include \"" << cpp_include << "\"\n";
     }
   }
   f_types_ << endl;
+  f_types_cpp17_ << endl;
 
   // Include the types file
   f_types_impl_ << "#include \"" << get_include_prefix(*get_program()) << program_name_
                 << "_types.h\"" << endl << endl;
   f_types_tcc_ << "#include \"" << get_include_prefix(*get_program()) << program_name_
                << "_types.h\"" << endl << endl;
+  f_types_cpp17_impl_ << "#include \"" << get_include_prefix(*get_program()) << program_name_
+                << "_types_cpp17.h\"\n\n";
 
   // The swap() code needs <algorithm> for std::swap()
   f_types_impl_ << "#include <algorithm>" << endl;
+  f_types_cpp17_impl_ << "#include <algorithm>\n";
+
+  // C++17 needs a few more types that normally would come from thrift headers
+  f_types_cpp17_ << "#include <map>\n";
+  f_types_cpp17_ << "#include <vector>\n" ;
+  f_types_cpp17_ << "#include <string_view>\n" ;
+  f_types_cpp17_impl_ << "#include <array>\n";
+
   // for operator<<
   f_types_impl_ << "#include <ostream>" << endl << endl;
   f_types_impl_ << "#include <thrift/TToString.h>" << endl << endl;
+  f_types_cpp17_impl_ << "#include <ostream>\n\n";
 
   // Open namespace
   ns_open_ = namespace_open(program_->get_namespace("cpp"), false);
   ns_close_ = namespace_close(program_->get_namespace("cpp"), false);
+  // Open C++17 namespace
+  ns_open_cpp17_ = namespace_open(program_->get_namespace("cpp"), true);
+  ns_close_cpp17_ = namespace_close(program_->get_namespace("cpp"), true);
 
   f_types_ << ns_open_ << endl << endl;
-
   f_types_impl_ << ns_open_ << endl << endl;
-
   f_types_tcc_ << ns_open_ << endl << endl;
+
+  f_types_cpp17_ << ns_open_cpp17_ << "\n\n";
+  f_types_cpp17_impl_ << ns_open_cpp17_ << "\n\n";
 }
 
 /**
@@ -510,6 +562,10 @@ void t_cpp_generator::close_generator() {
   f_types_ << ns_close_ << endl << endl;
   f_types_impl_ << ns_close_ << endl;
   f_types_tcc_ << ns_close_ << endl << endl;
+
+  // Close C++17 namespace
+  f_types_cpp17_ << ns_close_cpp17_ << "\n";
+  f_types_cpp17_impl_ << ns_close_cpp17_ << "\n";
 
   // Include the types.tcc file from the types header file,
   // so clients don't have to explicitly include the tcc file.
@@ -527,11 +583,15 @@ void t_cpp_generator::close_generator() {
   f_types_.close();
   f_types_impl_.close();
   f_types_tcc_.close();
+  f_types_cpp17_.close();
+  f_types_cpp17_impl_.close();
 
   string f_types_impl_name = get_out_dir() + program_name_ + "_types.cpp";
+  string f_types_cpp17_impl_name = get_out_dir() + program_name_ + "_types_cpp17.cpp";
 
   if (!has_members_) {
     remove(f_types_impl_name.c_str());
+    remove(f_types_cpp17_impl_name.c_str());
   }
 }
 
@@ -544,6 +604,9 @@ void t_cpp_generator::generate_typedef(t_typedef* ttypedef) {
   generate_java_doc(f_types_, ttypedef);
   f_types_ << indent() << "typedef " << type_name(ttypedef->get_type(), true) << " "
            << ttypedef->get_symbolic() << ";" << endl << endl;
+
+  f_types_cpp17_ << indent() << "using " << ttypedef->get_symbolic() << " = "
+                 << type_name(ttypedef->get_type(), true) << ";\n";
 }
 
 void t_cpp_generator::generate_enum_constant_list(std::ostream& f,
@@ -586,13 +649,17 @@ void t_cpp_generator::generate_enum(t_enum* tenum) {
   std::string enum_name = tenum->get_name();
   if (!gen_pure_enums_) {
     enum_name = "type";
-    generate_java_doc(f_types_, tenum);
+    generate_java_doc(f_types_, tenum); // Is this a bug that pure enums does not get java docs?
     f_types_ << indent() << "struct " << tenum->get_name() << " {" << endl;
     indent_up();
   }
   f_types_ << indent() << "enum " << enum_name;
 
+  generate_java_doc(f_types_cpp17_, tenum);
+  f_types_cpp17_ << "enum " << tenum->get_name();
+
   generate_enum_constant_list(f_types_, constants, "", "", true);
+  generate_enum_constant_list(f_types_cpp17_, constants, "", "", true);
 
   if (!gen_pure_enums_) {
     indent_down();
@@ -600,6 +667,7 @@ void t_cpp_generator::generate_enum(t_enum* tenum) {
   }
 
   f_types_ << endl;
+  f_types_cpp17_ << "\n";
 
   /**
      Generate a character array of enum names for debugging purposes.
@@ -610,19 +678,32 @@ void t_cpp_generator::generate_enum(t_enum* tenum) {
   }
 
   f_types_impl_ << indent() << "int _k" << tenum->get_name() << "Values[] =";
+  f_types_cpp17_impl_ << indent() << "constexpr std::array " << tenum->get_name() << "ValuesArray =";
   generate_enum_constant_list(f_types_impl_, constants, prefix.c_str(), "", false);
+  generate_enum_constant_list(f_types_cpp17_impl_, constants, prefix.c_str(), "", false);
 
   f_types_impl_ << indent() << "const char* _k" << tenum->get_name() << "Names[] =";
+  f_types_cpp17_impl_ << indent() << "constexpr std::array " << tenum->get_name() << "NamesArray =";
   generate_enum_constant_list(f_types_impl_, constants, "\"", "\"", false);
+  generate_enum_constant_list(f_types_cpp17_impl_, constants, "\"", "\"", false);
 
   f_types_ << indent() << "extern const std::map<int, const char*> _" << tenum->get_name()
            << "_VALUES_TO_NAMES;" << endl << endl;
+  f_types_cpp17_ << indent() << "std::map<int, std::string_view> get_" << tenum->get_name()
+                 << "_MAP();\n\n";
 
   f_types_impl_ << indent() << "const std::map<int, const char*> _" << tenum->get_name()
                 << "_VALUES_TO_NAMES(::apache::thrift::TEnumIterator(" << constants.size() << ", _k"
                 << tenum->get_name() << "Values"
                 << ", _k" << tenum->get_name() << "Names), "
                 << "::apache::thrift::TEnumIterator(-1, nullptr, nullptr));" << endl << endl;
+
+  f_types_cpp17_impl_ << indent() << "std::map<int, const char*> get_" << tenum->get_name()
+                      << "_MAP() {\n"
+                      << indent() << "  static const std::map<int, const char*> mapping(::apache::thrift::TEnumIterator("
+                      << constants.size() << ", " << tenum->get_name() << "ValuesArray.data()" << ", "
+                      << tenum->get_name() << "NamesArray.data()), ::apache::thrift::TEnumIterator(-1, nullptr, nullptr));\n"
+                      << indent() << "  return mapping;\n}\n\n";
 
   generate_enum_ostream_operator_decl(f_types_, tenum);
   generate_enum_ostream_operator(f_types_impl_, tenum);
@@ -4793,4 +4874,4 @@ THRIFT_REGISTER_GENERATOR(
     "    no_ostream_operators:\n"
     "                     Omit generation of ostream definitions.\n"
     "    no_skeleton:     Omits generation of skeleton.\n"
-    "    pure_cpp17:      Generate pure C++17 types along with old types.\n")
+    "    cpp17:           Generate C++17 support along with old types.\n")
