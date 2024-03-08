@@ -134,8 +134,7 @@ protected:
 
       print_default_imports(f_consts);
 
-      f_consts << "import " << render_package(*get_program()) << program_name_ << "_types;\n"
-               << "\n";
+      f_consts << "import " << render_package(*get_program()) << program_name_ << "_types;\n\n";
 
       vector<t_const*>::iterator c_iter;
       for (c_iter = consts.begin(); c_iter != consts.end(); ++c_iter) {
@@ -262,8 +261,7 @@ protected:
     for (et_iter = exception_types.begin(); et_iter != exception_types.end(); ++et_iter) {
       indent(f_service) << "alias " << render_package(*(*et_iter)->get_program())
                         << (*et_iter)->get_program()->get_name() << "_types"
-                        << "." << (*et_iter)->get_name() << " " << (*et_iter)->get_name() << ";"
-                        << "\n";
+                        << "." << (*et_iter)->get_name() << " " << (*et_iter)->get_name() << ";\n";
     }
 
     // Write the method metadata.
@@ -338,8 +336,7 @@ protected:
 
     string meta_str(meta.str());
     if (!meta_str.empty()) {
-      f_service << "\n" << indent() << "enum methodMeta = [" << meta_str << "\n" << indent() << "];"
-                << "\n";
+      f_service << "\n" << indent() << "enum methodMeta = [" << meta_str << "\n" << indent() << "];\n";
     }
 
     indent_down();
@@ -389,8 +386,7 @@ private:
         << "class " << svc_name << "Handler : " << svc_name << " {\n";
 
     indent_up();
-    out << indent() << "this() {\n" << indent() << "  // Your initialization goes here."
-        << "\n" << indent() << "}\n\n";
+    out << indent() << "this() {\n" << indent() << "  // Your initialization goes here.\n" << indent() << "}\n\n";
 
     vector<t_function*> functions = tservice->get_functions();
     vector<t_function*>::iterator f_iter;
@@ -421,8 +417,7 @@ private:
     indent_up();
     out << indent() << "auto protocolFactory = new TBinaryProtocolFactory!();\n" << indent()
         << "auto processor = new TServiceProcessor!" << svc_name << "(new " << svc_name
-        << "Handler);\n" << indent() << "auto serverTransport = new TServerSocket(9090);"
-        << "\n" << indent() << "auto transportFactory = new TBufferedTransportFactory;\n"
+        << "Handler);\n" << indent() << "auto serverTransport = new TServerSocket(9090);\n" << indent() << "auto transportFactory = new TBufferedTransportFactory;\n"
         << indent() << "auto server = new TSimpleServer(\n" << indent()
         << "  processor, serverTransport, transportFactory, protocolFactory);\n" << indent()
         << "server.serve();\n";
@@ -447,8 +442,7 @@ private:
     // Declare all fields.
     vector<t_field*>::const_iterator m_iter;
     for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-      indent(out) << render_type_name((*m_iter)->get_type()) << " " << suffix_if_reserved((*m_iter)->get_name()) << ";"
-                  << "\n";
+      indent(out) << render_type_name((*m_iter)->get_type()) << " " << suffix_if_reserved((*m_iter)->get_name()) << ";\n";
     }
 
     if (!members.empty())

@@ -514,8 +514,7 @@ void t_php_generator::generate_typedef(t_typedef* ttypedef) {
 void t_php_generator::generate_service_header(t_service* tservice, std::ostream& file) {
   file << "<?php\n";
   if (!php_namespace_suffix(tservice->get_program()).empty()) {
-    file << "namespace " << php_namespace_suffix(tservice->get_program()) << ";\n"
-         << "\n";
+    file << "namespace " << php_namespace_suffix(tservice->get_program()) << ";\n\n";
   }
   file << autogen_comment() << php_includes();
 
@@ -528,8 +527,7 @@ void t_php_generator::generate_service_header(t_service* tservice, std::ostream&
 void t_php_generator::generate_program_header(std::ostream& file) {
   file << "<?php\n";
   if (!php_namespace_suffix(get_program()).empty()) {
-    file << "namespace " << php_namespace_suffix(get_program()) << ";\n"
-         << "\n";
+    file << "namespace " << php_namespace_suffix(get_program()) << ";\n\n";
   }
   file << autogen_comment() << php_includes();
 
@@ -564,8 +562,7 @@ void t_php_generator::generate_enum(t_enum* tenum) {
   for (c_iter = constants.begin(); c_iter != constants.end(); ++c_iter) {
     int value = (*c_iter)->get_value();
     generate_php_doc(f_enum, *c_iter);
-    indent(f_enum) << "const " << (*c_iter)->get_name() << " = " << value << ";\n"
-                   << "\n";
+    indent(f_enum) << "const " << (*c_iter)->get_name() << " = " << value << ";\n\n";
   }
 
   indent(f_enum) << "static public $__names = array(\n";
@@ -783,8 +780,7 @@ void t_php_generator::generate_php_type_spec(ostream& out, t_type* t) {
   if (t->is_base_type()) {
     // Noop, type is all we need
   } else if (t->is_struct() || t->is_xception() || t->is_enum()) {
-    indent(out) << "'class' => '" << php_namespace(t->get_program()) << t->get_name() << "',"
-                << "\n";
+    indent(out) << "'class' => '" << php_namespace(t->get_program()) << t->get_name() << "',\n";
   } else if (t->is_map()) {
     t_type* ktype = get_true_type(((t_map*)t)->get_key_type());
     t_type* vtype = get_true_type(((t_map*)t)->get_val_type());
@@ -1044,13 +1040,11 @@ void t_php_generator::generate_php_struct_reader(ostream& out, t_struct* tstruct
 
   if (oop_) {
     if (needs_php_read_validator(tstruct, is_result)) {
-      indent(out) << "$tmp = $this->_read('" << tstruct->get_name() << "', self::$_TSPEC, $input);"
-                  << "\n";
+      indent(out) << "$tmp = $this->_read('" << tstruct->get_name() << "', self::$_TSPEC, $input);\n";
       indent(out) << "$this->_validateForRead();\n";
       indent(out) << "return $tmp;\n";
     } else {
-      indent(out) << "return $this->_read('" << tstruct->get_name() << "', self::$_TSPEC, $input);"
-                  << "\n";
+      indent(out) << "return $this->_read('" << tstruct->get_name() << "', self::$_TSPEC, $input);\n";
     }
     scope_down(out);
     out << "\n";
@@ -1173,8 +1167,7 @@ void t_php_generator::generate_php_struct_writer(ostream& out, t_struct* tstruct
   }
 
   if (oop_) {
-    indent(out) << "return $this->_write('" << tstruct->get_name() << "', self::$_TSPEC, $output);"
-                << "\n";
+    indent(out) << "return $this->_write('" << tstruct->get_name() << "', self::$_TSPEC, $output);\n";
     scope_down(out);
     out << "\n";
     return;
@@ -1198,8 +1191,7 @@ void t_php_generator::generate_php_struct_writer(ostream& out, t_struct* tstruct
       expect = "object";
     }
     if (!expect.empty()) {
-      out << indent() << "if (!is_" << expect << "($this->" << (*f_iter)->get_name() << ")) {"
-          << "\n";
+      out << indent() << "if (!is_" << expect << "($this->" << (*f_iter)->get_name() << ")) {\n";
       indent_up();
       out << indent() << "throw new "
           << "TProtocolException('Bad type in structure.', "
@@ -1209,8 +1201,7 @@ void t_php_generator::generate_php_struct_writer(ostream& out, t_struct* tstruct
 
     // Write field header
     if (binary_inline_) {
-      out << indent() << "$output .= pack('c', " << type_to_enum((*f_iter)->get_type()) << ");"
-          << "\n" << indent() << "$output .= pack('n', " << (*f_iter)->get_key() << ");\n";
+      out << indent() << "$output .= pack('c', " << type_to_enum((*f_iter)->get_type()) << ");\n" << indent() << "$output .= pack('n', " << (*f_iter)->get_key() << ");\n";
     } else {
       indent(out) << "$xfer += $output->writeFieldBegin("
                   << "'" << (*f_iter)->get_name() << "', " << type_to_enum((*f_iter)->get_type())
@@ -1467,8 +1458,7 @@ void t_php_generator::generate_service_processor(t_service* tservice) {
                         << "TApplicationException::UNKNOWN_METHOD);\n" << indent()
                         << "  $output->writeMessageBegin($fname, "
                         << "TMessageType::EXCEPTION, $rseqid);\n" << indent()
-                        << "  $x->write($output);\n" << indent() << "  $output->writeMessageEnd();"
-                        << "\n" << indent() << "  $output->getTransport()->flush();\n" << indent()
+                        << "  $x->write($output);\n" << indent() << "  $output->writeMessageEnd();\n" << indent() << "  $output->getTransport()->flush();\n" << indent()
                         << "  return;\n";
   }
 
@@ -1510,8 +1500,7 @@ void t_php_generator::generate_process_function(std::ostream& out, t_service* ts
                       + tfunction->get_name() + "_result";
 
   out << indent() << "$bin_accel = ($input instanceof "
-             << "TBinaryProtocolAccelerated) && function_exists('thrift_protocol_read_binary_after_message_begin');"
-             << "\n";
+             << "TBinaryProtocolAccelerated) && function_exists('thrift_protocol_read_binary_after_message_begin');\n";
   out << indent() << "if ($bin_accel) {\n";
   indent_up();
 
@@ -1580,8 +1569,7 @@ void t_php_generator::generate_process_function(std::ostream& out, t_service* ts
     for (x_iter = xceptions.begin(); x_iter != xceptions.end(); ++x_iter) {
       out << indent() << "} catch ("
                  << php_namespace(get_true_type((*x_iter)->get_type())->get_program())
-                 << (*x_iter)->get_type()->get_name() << " $" << (*x_iter)->get_name() << ") {"
-                 << "\n";
+                 << (*x_iter)->get_type()->get_name() << " $" << (*x_iter)->get_name() << ") {\n";
       if (!tfunction->is_oneway()) {
         indent_up();
         out << indent() << "$result->" << (*x_iter)->get_name() << " = $"
@@ -1602,8 +1590,7 @@ void t_php_generator::generate_process_function(std::ostream& out, t_service* ts
   }
 
   out << indent() << "$bin_accel = ($output instanceof "
-             << "TBinaryProtocolAccelerated) && function_exists('thrift_protocol_write_binary');"
-             << "\n";
+             << "TBinaryProtocolAccelerated) && function_exists('thrift_protocol_write_binary');\n";
 
   out << indent() << "if ($bin_accel) {\n";
   indent_up();
@@ -1630,13 +1617,11 @@ void t_php_generator::generate_process_function(std::ostream& out, t_service* ts
     out << indent() << "$buff = pack('N', (0x80010000 | "
         << "TMessageType::REPLY)); \n" << indent() << "$buff .= pack('N', strlen('"
         << tfunction->get_name() << "'));\n" << indent() << "$buff .= '"
-        << tfunction->get_name() << "';\n" << indent() << "$buff .= pack('N', $seqid);"
-        << "\n" << indent() << "$result->write($buff);\n" << indent()
+        << tfunction->get_name() << "';\n" << indent() << "$buff .= pack('N', $seqid);\n" << indent() << "$result->write($buff);\n" << indent()
         << "$output->write($buff);\n" << indent() << "$output->flush();\n";
   } else {
     out << indent() << "$output->writeMessageBegin('" << tfunction->get_name() << "', "
-        << "TMessageType::REPLY, $seqid);\n" << indent() << "$result->write($output);"
-        << "\n" << indent() << "$output->writeMessageEnd();\n" << indent()
+        << "TMessageType::REPLY, $seqid);\n" << indent() << "$result->write($output);\n" << indent() << "$output->writeMessageEnd();\n" << indent()
         << "$output->getTransport()->flush();\n";
   }
 
@@ -1859,8 +1844,7 @@ void t_php_generator::generate_service_client(t_service* tservice) {
   }
 
   f_service_client << "class " << php_namespace_declaration(tservice) << "Client" << extends_client
-             << " implements " << php_namespace(tservice->get_program()) << service_name_ << "If\n"
-             <<"{"<< "\n";
+             << " implements " << php_namespace(tservice->get_program()) << service_name_ << "If\n\n";
   indent_up();
 
   // Private members
@@ -1936,8 +1920,7 @@ void t_php_generator::generate_service_client(t_service* tservice) {
     }
 
     f_service_client << indent() << "$bin_accel = ($this->output_ instanceof "
-               << "TBinaryProtocolAccelerated) && function_exists('thrift_protocol_write_binary');"
-               << "\n";
+               << "TBinaryProtocolAccelerated) && function_exists('thrift_protocol_write_binary');\n";
 
     f_service_client << indent() << "if ($bin_accel) {\n";
     indent_up();
@@ -2029,8 +2012,7 @@ void t_php_generator::generate_service_client(t_service* tservice) {
         t_field ffname(g_type_string, "fname");
         t_field fseqid(g_type_i32, "rseqid");
         f_service_client << indent() << "$ver = unpack('N', $this->input_->readAll(4));\n"
-                         << indent() << "$ver = $ver[1];\n" << indent() << "$mtype = $ver & 0xff;"
-                         << "\n" << indent() << "$ver = $ver & 0xffff0000;\n" << indent()
+                         << indent() << "$ver = $ver[1];\n" << indent() << "$mtype = $ver & 0xff;\n" << indent() << "$ver = $ver & 0xffff0000;\n" << indent()
                          << "if ($ver != 0x80010000) throw new "
                          << "TProtocolException('Bad version identifier: '.$ver, "
                          << "TProtocolException::BAD_VERSION);\n";
@@ -2138,29 +2120,23 @@ void t_php_generator::generate_deserialize_field(ostream& out,
             break;
           case t_base_type::TYPE_STRING:
             out << indent() << "$len = unpack('N', " << itrans << "->readAll(4));\n"
-                << indent() << "$len = $len[1];\n" << indent() << "if ($len > 0x7fffffff) {"
-                << "\n" << indent() << "  $len = 0 - (($len - 1) ^ 0xffffffff);\n" << indent()
-                << "}\n" << indent() << "$" << name << " = " << itrans << "->readAll($len);"
-                << "\n";
+                << indent() << "$len = $len[1];\n" << indent() << "if ($len > 0x7fffffff) {\n" << indent() << "  $len = 0 - (($len - 1) ^ 0xffffffff);\n" << indent()
+                << "}\n" << indent() << "$" << name << " = " << itrans << "->readAll($len);\n";
             break;
           case t_base_type::TYPE_BOOL:
-            out << indent() << "$" << name << " = unpack('c', " << itrans << "->readAll(1));"
-                << "\n" << indent() << "$" << name << " = (bool)$" << name << "[1];\n";
+            out << indent() << "$" << name << " = unpack('c', " << itrans << "->readAll(1));\n" << indent() << "$" << name << " = (bool)$" << name << "[1];\n";
             break;
           case t_base_type::TYPE_I8:
-            out << indent() << "$" << name << " = unpack('c', " << itrans << "->readAll(1));"
-                << "\n" << indent() << "$" << name << " = $" << name << "[1];\n";
+            out << indent() << "$" << name << " = unpack('c', " << itrans << "->readAll(1));\n" << indent() << "$" << name << " = $" << name << "[1];\n";
             break;
           case t_base_type::TYPE_I16:
             out << indent() << "$val = unpack('n', " << itrans << "->readAll(2));\n"
-                << indent() << "$val = $val[1];\n" << indent() << "if ($val > 0x7fff) {"
-                << "\n" << indent() << "  $val = 0 - (($val - 1) ^ 0xffff);\n" << indent()
+                << indent() << "$val = $val[1];\n" << indent() << "if ($val > 0x7fff) {\n" << indent() << "  $val = 0 - (($val - 1) ^ 0xffff);\n" << indent()
                 << "}\n" << indent() << "$" << name << " = $val;\n";
             break;
           case t_base_type::TYPE_I32:
             out << indent() << "$val = unpack('N', " << itrans << "->readAll(4));\n"
-                << indent() << "$val = $val[1];\n" << indent() << "if ($val > 0x7fffffff) {"
-                << "\n" << indent() << "  $val = 0 - (($val - 1) ^ 0xffffffff);\n" << indent()
+                << indent() << "$val = $val[1];\n" << indent() << "if ($val > 0x7fffffff) {\n" << indent() << "  $val = 0 - (($val - 1) ^ 0xffffffff);\n" << indent()
                 << "}\n" << indent() << "$" << name << " = $val;\n";
             break;
           case t_base_type::TYPE_I64:
@@ -2168,8 +2144,7 @@ void t_php_generator::generate_deserialize_field(ostream& out,
                 << indent() << "if ($arr[1] & 0x80000000) {\n" << indent()
                 << "  $arr[1] = $arr[1] ^ 0xFFFFFFFF;\n" << indent()
                 << "  $arr[2] = $arr[2] ^ 0xFFFFFFFF;\n" << indent() << "  $" << name
-                << " = 0 - $arr[1]*4294967296 - $arr[2] - 1;\n" << indent() << "} else {"
-                << "\n" << indent() << "  $" << name << " = $arr[1]*4294967296 + $arr[2];\n"
+                << " = 0 - $arr[1]*4294967296 - $arr[2] - 1;\n" << indent() << "} else {\n" << indent() << "  $" << name << " = $arr[1]*4294967296 + $arr[2];\n"
                 << indent() << "}\n";
             break;
           case t_base_type::TYPE_DOUBLE:
@@ -2183,8 +2158,7 @@ void t_php_generator::generate_deserialize_field(ostream& out,
         } else if (type->is_enum()) {
           out << indent() << "$val = unpack('N', " << itrans << "->readAll(4));\n" << indent()
               << "$val = $val[1];\n" << indent() << "if ($val > 0x7fffffff) {\n"
-              << indent() << "  $val = 0 - (($val - 1) ^ 0xffffffff);\n" << indent() << "}"
-              << "\n" << indent() << "$" << name << " = $val;\n";
+              << indent() << "  $val = 0 - (($val - 1) ^ 0xffffffff);\n" << indent() << "}\n" << indent() << "$" << name << " = $val;\n";
         }
       } else {
 
@@ -2256,13 +2230,11 @@ void t_php_generator::generate_deserialize_container(ostream& out, t_type* ttype
   t_field fvtype(g_type_i8, vtype);
   t_field fetype(g_type_i8, etype);
 
-  out << indent() << "$" << prefix << " = array();\n" << indent() << "$" << size << " = 0;"
-      << "\n";
+  out << indent() << "$" << prefix << " = array();\n" << indent() << "$" << size << " = 0;\n";
 
   // Declare variables, read header
   if (ttype->is_map()) {
-    out << indent() << "$" << ktype << " = 0;\n" << indent() << "$" << vtype << " = 0;"
-        << "\n";
+    out << indent() << "$" << ktype << " = 0;\n" << indent() << "$" << vtype << " = 0;\n";
     if (binary_inline_) {
       generate_deserialize_field(out, &fktype);
       generate_deserialize_field(out, &fvtype);
@@ -2500,8 +2472,7 @@ void t_php_generator::generate_serialize_container(ostream& out, t_type* ttype, 
   } else if (ttype->is_set()) {
     if (binary_inline_) {
       out << indent() << "$output .= pack('c', " << type_to_enum(((t_set*)ttype)->get_elem_type())
-          << ");\n" << indent() << "$output .= strrev(pack('l', count($" << prefix << ")));"
-          << "\n";
+          << ");\n" << indent() << "$output .= strrev(pack('l', count($" << prefix << ")));\n";
 
     } else {
       indent(out) << "$output->writeSetBegin(" << type_to_enum(((t_set*)ttype)->get_elem_type())
@@ -2511,8 +2482,7 @@ void t_php_generator::generate_serialize_container(ostream& out, t_type* ttype, 
   } else if (ttype->is_list()) {
     if (binary_inline_) {
       out << indent() << "$output .= pack('c', " << type_to_enum(((t_list*)ttype)->get_elem_type())
-          << ");\n" << indent() << "$output .= strrev(pack('l', count($" << prefix << ")));"
-          << "\n";
+          << ");\n" << indent() << "$output .= strrev(pack('l', count($" << prefix << ")));\n";
 
     } else {
       indent(out) << "$output->writeListBegin(" << type_to_enum(((t_list*)ttype)->get_elem_type())

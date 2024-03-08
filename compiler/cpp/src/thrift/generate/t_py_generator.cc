@@ -1021,8 +1021,7 @@ void t_py_generator::generate_py_struct_definition(ostream& out,
         << indent() << indent_str() << "other_val = getattr(other, attr)\n"
         << indent() << indent_str() << "if my_val != other_val:\n"
         << indent() << indent_str() << indent_str() << "return False\n"
-        << indent() << "return True\n"
-        << "\n";
+        << indent() << "return True\n\n";
     indent_down();
 
     out << indent() << "def __ne__(self, other):\n"
@@ -1151,8 +1150,7 @@ void t_py_generator::generate_py_struct_writer(ostream& out, t_struct* tstruct) 
   indent_up();
 
   indent(out)
-      << "oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))"
-      << "\n";
+      << "oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))\n";
   indent(out) << "return\n";
   indent_down();
 
@@ -1176,8 +1174,7 @@ void t_py_generator::generate_py_struct_writer(ostream& out, t_struct* tstruct) 
   }
 
   // Write the struct map
-  out << indent() << "oprot.writeFieldStop()\n" << indent() << "oprot.writeStructEnd()"
-      << "\n";
+  out << indent() << "oprot.writeFieldStop()\n" << indent() << "oprot.writeStructEnd()\n";
 
   out << "\n";
 
@@ -1370,8 +1367,7 @@ void t_py_generator::generate_service_client(t_service* tservice) {
 
   if (gen_zope_interface_) {
     f_service_ << "@implementer(Iface)\n"
-               << "class Client" << extends_client << ":\n"
-               << "\n";
+               << "class Client" << extends_client << ":\n\n";
   } else {
     f_service_ << "class Client(" << extends_client << "Iface):\n";
   }
@@ -1397,13 +1393,11 @@ void t_py_generator::generate_service_client(t_service* tservice) {
     } else if (gen_tornado_) {
       f_service_ << indent() << "self._transport = transport\n"
                  << indent() << "self._iprot_factory = iprot_factory\n"
-                 << indent() << "self._oprot_factory = (oprot_factory if oprot_factory is not None"
-                 << "\n"
+                 << indent() << "self._oprot_factory = (oprot_factory if oprot_factory is not None\n"
                  << indent() << "                       else iprot_factory)\n"
                  << indent() << "self._seqid = 0\n"
                  << indent() << "self._reqs = {}\n"
-                 << indent() << "self._transport.io_loop.spawn_callback(self._start_receiving)"
-                 << "\n";
+                 << indent() << "self._transport.io_loop.spawn_callback(self._start_receiving)\n";
     } else {
       f_service_ << indent() << "self._iprot = self._oprot = iprot\n"
                  << indent() << "if oprot is not None:\n"
@@ -1547,8 +1541,7 @@ void t_py_generator::generate_service_client(t_service* tservice) {
       // add an errback to fail the request if the call to send_<> raised an exception
       indent(f_service_) << "def eb_send_" << funname << "(self, f, seqid):\n";
       indent_up();
-      f_service_ << indent() << "d = self._reqs.pop(seqid)\n" << indent() << "d.errback(f)"
-                 << "\n" << indent() << "return d\n";
+      f_service_ << indent() << "d = self._reqs.pop(seqid)\n" << indent() << "d.errback(f)\n" << indent() << "return d\n";
       indent_down();
     }
 
@@ -1578,8 +1571,7 @@ void t_py_generator::generate_service_client(t_service* tservice) {
 
     // Write to the stream
     if (gen_twisted_ || gen_tornado_) {
-      f_service_ << indent() << "args.write(oprot)\n" << indent() << "oprot.writeMessageEnd()"
-                 << "\n" << indent() << "oprot.trans.flush()\n";
+      f_service_ << indent() << "args.write(oprot)\n" << indent() << "oprot.writeMessageEnd()\n" << indent() << "oprot.trans.flush()\n";
     } else {
       f_service_ << indent() << "args.write(self._oprot)\n" << indent()
                  << "self._oprot.writeMessageEnd()\n" << indent()
@@ -1619,8 +1611,7 @@ void t_py_generator::generate_service_client(t_service* tservice) {
 
       if (gen_twisted_) {
         f_service_ << indent() << indent_str() << "x.read(iprot)\n" << indent()
-                   << indent_str() << "iprot.readMessageEnd()\n" << indent() << indent_str() << "return d.errback(x)"
-                   << "\n" << indent() << "result = " << resultname << "()\n" << indent()
+                   << indent_str() << "iprot.readMessageEnd()\n" << indent() << indent_str() << "return d.errback(x)\n" << indent() << "result = " << resultname << "()\n" << indent()
                    << "result.read(iprot)\n" << indent() << "iprot.readMessageEnd()\n";
       } else {
         f_service_ << indent() << indent_str() << "x.read(iprot)\n" << indent()
@@ -1646,8 +1637,7 @@ void t_py_generator::generate_service_client(t_service* tservice) {
         const string& xname = (*x_iter)->get_name();
         f_service_ << indent() << "if result." << xname << " is not None:\n";
         if (gen_twisted_) {
-          f_service_ << indent() << indent_str() << "return d.errback(result." << xname << ")"
-                     << "\n";
+          f_service_ << indent() << indent_str() << "return d.errback(result." << xname << ")\n";
         } else {
           f_service_ << indent() << indent_str() << "raise result." << xname << "\n";
         }
@@ -1755,15 +1745,13 @@ void t_py_generator::generate_service_remote(t_service* tservice) {
            << "keyfile = None\n"
            << "certfile = None\n"
            << "http = False\n"
-           << "argi = 1\n"
-           << "\n"
+           << "argi = 1\n\n"
            << "if sys.argv[argi] == '-h':\n"
            << indent_str() << "parts = sys.argv[argi + 1].split(':')\n"
            << indent_str() << "host = parts[0]\n"
            << indent_str() << "if len(parts) > 1:\n"
            << indent_str() << indent_str() << "port = int(parts[1])\n"
-           << indent_str() << "argi += 2\n"
-           << "\n"
+           << indent_str() << "argi += 2\n\n"
            << "if sys.argv[argi] == '-u':\n"
            << indent_str() << "url = urlparse(sys.argv[argi + 1])\n"
            << indent_str() << "parts = url[1].split(':')\n"
@@ -1776,42 +1764,33 @@ void t_py_generator::generate_service_remote(t_service* tservice) {
            << indent_str() << "if url[4]:\n"
            << indent_str() << indent_str() << "uri += '?%s' % url[4]\n"
            << indent_str() << "http = True\n"
-           << indent_str() << "argi += 2\n"
-           << "\n"
+           << indent_str() << "argi += 2\n\n"
            << "if sys.argv[argi] == '-f' or sys.argv[argi] == '-framed':\n"
            << indent_str() << "framed = True\n"
-           << indent_str() << "argi += 1\n"
-           << "\n"
+           << indent_str() << "argi += 1\n\n"
            << "if sys.argv[argi] == '-s' or sys.argv[argi] == '-ssl':\n"
            << indent_str() << "ssl = True\n"
-           << indent_str() << "argi += 1\n"
-           << "\n"
+           << indent_str() << "argi += 1\n\n"
            << "if sys.argv[argi] == '-novalidate':\n"
            << indent_str() << "validate = False\n"
-           << indent_str() << "argi += 1\n"
-           << "\n"
+           << indent_str() << "argi += 1\n\n"
            << "if sys.argv[argi] == '-ca_certs':\n"
            << indent_str() << "ca_certs = sys.argv[argi+1]\n"
-           << indent_str() << "argi += 2\n"
-           << "\n"
+           << indent_str() << "argi += 2\n\n"
            << "if sys.argv[argi] == '-keyfile':\n"
            << indent_str() << "keyfile = sys.argv[argi+1]\n"
-           << indent_str() << "argi += 2\n"
-           << "\n"
+           << indent_str() << "argi += 2\n\n"
            << "if sys.argv[argi] == '-certfile':\n"
            << indent_str() << "certfile = sys.argv[argi+1]\n"
-           << indent_str() << "argi += 2\n"
-           << "\n"
+           << indent_str() << "argi += 2\n\n"
            << "cmd = sys.argv[argi]\n"
-           << "args = sys.argv[argi + 1:]\n"
-           << "\n"
+           << "args = sys.argv[argi + 1:]\n\n"
            << "if http:\n"
            << indent_str() << "transport = THttpClient.THttpClient(host, port, uri)\n"
            << "else:\n"
            << indent_str() << "if ssl:\n"
            << indent_str() << indent_str() << "socket = TSSLSocket.TSSLSocket(host, port, "
-              "validate=validate, ca_certs=ca_certs, keyfile=keyfile, certfile=certfile)"
-           << "\n"
+              "validate=validate, ca_certs=ca_certs, keyfile=keyfile, certfile=certfile)\n"
            << indent_str() << "else:\n"
            << indent_str() << indent_str() << "socket = TSocket.TSocket(host, port)\n"
            << indent_str() << "if framed:\n"
@@ -1820,8 +1799,7 @@ void t_py_generator::generate_service_remote(t_service* tservice) {
            << indent_str() << indent_str() << "transport = TTransport.TBufferedTransport(socket)\n"
            << "protocol = TBinaryProtocol(transport)\n"
            << "client = " << service_name_ << ".Client(protocol)\n"
-           << "transport.open()\n"
-           << "\n";
+           << "transport.open()\n\n";
 
   // Generate the dispatch methods
   bool first = true;
@@ -1966,8 +1944,7 @@ void t_py_generator::generate_service_server(t_service* tservice) {
              << indent() << "iprot.readMessageEnd()\n"
              << indent()
              << "x = TApplicationException(TApplicationException.UNKNOWN_METHOD, 'Unknown "
-                "function %s' % (name))"
-             << "\n"
+                "function %s' % (name))\n"
              << indent() << "oprot.writeMessageBegin(name, TMessageType.EXCEPTION, seqid)\n"
              << indent() << "x.write(oprot)\n"
              << indent() << "oprot.writeMessageEnd()\n"
@@ -1986,8 +1963,7 @@ void t_py_generator::generate_service_server(t_service* tservice) {
     f_service_ << indent() << indent_str()
                << "return self._processMap[name](self, seqid, iprot, oprot)\n";
   } else {
-    f_service_ << indent() << indent_str() << "self._processMap[name](self, seqid, iprot, oprot)"
-               << "\n";
+    f_service_ << indent() << indent_str() << "self._processMap[name](self, seqid, iprot, oprot)\n";
 
     // Read end of args field, the T_STOP, and the struct close
     f_service_ << indent() << "return True\n";
@@ -2025,8 +2001,7 @@ void t_py_generator::generate_process_function(t_service* tservice, t_function* 
   string argsname = tfunction->get_name() + "_args";
   string resultname = tfunction->get_name() + "_result";
 
-  f_service_ << indent() << "args = " << argsname << "()\n" << indent() << "args.read(iprot)"
-             << "\n" << indent() << "iprot.readMessageEnd()\n";
+  f_service_ << indent() << "args = " << argsname << "()\n" << indent() << "args.read(iprot)\n" << indent() << "iprot.readMessageEnd()\n";
 
   t_struct* xs = tfunction->get_xceptions();
   const std::vector<t_field*>& xceptions = xs->get_members();
@@ -2083,8 +2058,7 @@ void t_py_generator::generate_process_function(t_service* tservice, t_function* 
                  << "\", TMessageType.REPLY, seqid)\n"
                  << indent() << "result.write(oprot)\n"
                  << indent() << "oprot.writeMessageEnd()\n"
-                 << indent() << "oprot.trans.flush()\n"
-                 << "\n";
+                 << indent() << "oprot.trans.flush()\n\n";
       indent_down();
 
       indent(f_service_) << "def write_results_exception_" << tfunction->get_name()
@@ -2122,8 +2096,7 @@ void t_py_generator::generate_process_function(t_service* tservice, t_function* 
                  << indent() << indent_str() << "msg_type = TMessageType.EXCEPTION\n"
                  << indent() << indent_str()
                  << "result = TApplicationException(TApplicationException.INTERNAL_ERROR, "
-                    "'Internal error')"
-                 << "\n"
+                    "'Internal error')\n"
                  << indent() << "oprot.writeMessageBegin(\"" << tfunction->get_name()
                  << "\", msg_type, seqid)\n"
                  << indent() << "result.write(oprot)\n"
@@ -2186,8 +2159,7 @@ void t_py_generator::generate_process_function(t_service* tservice, t_function* 
                  << indent() << indent_str() << "msg_type = TMessageType.EXCEPTION\n"
                  << indent() << indent_str()
                  << "result = TApplicationException(TApplicationException.INTERNAL_ERROR, "
-                    "'Internal error')"
-                 << "\n";
+                    "'Internal error')\n";
     } else {
       f_service_ << indent() << "except Exception:\n"
                  << indent() << indent_str()
@@ -2262,8 +2234,7 @@ void t_py_generator::generate_process_function(t_service* tservice, t_function* 
                  << indent() << indent_str() << "msg_type = TMessageType.EXCEPTION\n"
                  << indent() << indent_str()
                  << "result = TApplicationException(TApplicationException.INTERNAL_ERROR, "
-                    "'Internal error')"
-                 << "\n"
+                    "'Internal error')\n"
                  << indent() << "oprot.writeMessageBegin(\"" << tfunction->get_name()
                  << "\", msg_type, seqid)\n"
                  << indent() << "result.write(oprot)\n"

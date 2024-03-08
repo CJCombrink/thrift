@@ -238,8 +238,7 @@ public:
 
     std::cout << "\t\t\t" << (success ? "Success" : "Failure")
               << ": minimum required time to elapse " << count * timeout
-              << "ms; actual elapsed time " << endTime - startTime << "ms"
-              << "\n";
+              << "ms; actual elapsed time " << endTime - startTime << "ms\n";
 
     return success;
   }

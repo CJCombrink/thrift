@@ -930,8 +930,7 @@ void t_swift_generator::generate_swift_struct_equatable_extension(ostream& out,
       for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
         t_field* tfield = *m_iter;
         indent(out) << "case (." << tfield->get_name() << "(let lval), ."
-                    << tfield->get_name() << "(let rval)): return lval == rval"
-                    << "\n";
+                    << tfield->get_name() << "(let rval)): return lval == rval\n";
       }
       indent(out) << "default: return false\n";
       indent(out) << "}\n";
@@ -1460,8 +1459,7 @@ void t_swift_generator::generate_swift_struct_printable_extension(ostream& out, 
       indent(out) << "switch self {\n";
       for (f_iter = fields.begin(); f_iter != fields.end();f_iter++) {
         indent(out) << "case ." << (*f_iter)->get_name() << "(let val): "
-                    << "desc += \"" << (*f_iter)->get_name() << "(val: \\(val))\""
-                    << "\n";
+                    << "desc += \"" << (*f_iter)->get_name() << "(val: \\(val))\"\n";
       }
       indent(out) << "}\n";
     }
@@ -1768,10 +1766,8 @@ void t_swift_generator::generate_swift_service_server(ostream& out, t_service* t
     block_open(out);
     out << "\n";
     out << indent() << "typealias ProcessorHandlerDictionary = "
-        << "[String: (Int32, TProtocol, TProtocol, " << tservice->get_name() << ") throws -> Void]\n"
-        << "\n"
-        << indent() << "public var service: " << tservice->get_name() << "\n"
-        << "\n"
+        << "[String: (Int32, TProtocol, TProtocol, " << tservice->get_name() << ") throws -> Void]\n\n"
+        << indent() << "public var service: " << tservice->get_name() << "\n\n"
         << indent() << "public required init(service: " << tservice->get_name() << ")";
   } else {
     indent(out) << "public class " << tservice->get_name() << "Processor : NSObject /* "
@@ -1780,10 +1776,8 @@ void t_swift_generator::generate_swift_service_server(ostream& out, t_service* t
     out << "\n";
 
     out << indent() << "typealias ProcessorHandlerDictionary = "
-        << "[String: (Int, TProtocol, TProtocol, " << tservice->get_name() << ") throws -> Void]\n"
-        << "\n"
-        << indent() << "let service : " << tservice->get_name() << "\n"
-        << "\n"
+        << "[String: (Int, TProtocol, TProtocol, " << tservice->get_name() << ") throws -> Void]\n\n"
+        << indent() << "let service : " << tservice->get_name() << "\n\n"
         << indent() << "public init(service: " << tservice->get_name() << ")";
   }
 
@@ -2147,8 +2141,7 @@ void t_swift_generator::generate_swift_service_client_async_implementation(ostre
     block_open(out);
     out << "\n";
     out << indent() << "let transport   = factory.newTransport()\n"
-        << indent() << "let proto = Protocol(on: transport)\n"
-        << "\n";
+        << indent() << "let proto = Protocol(on: transport)\n\n";
 
     out << indent() << "do";
     block_open(out);
@@ -2228,8 +2221,7 @@ void t_swift_generator::generate_old_swift_service_client_async_implementation(o
     out << "\n";
 
     out << indent() << "let __transport = __transportFactory.newTransport()\n"
-        << indent() << "let __protocol = __protocolFactory.newProtocolOnTransport(__transport)\n"
-        << "\n";
+        << indent() << "let __protocol = __protocolFactory.newProtocolOnTransport(__transport)\n\n";
 
     generate_swift_service_client_send_async_function_invocation(out, *f_iter);
     out << "\n";
@@ -2276,8 +2268,7 @@ void t_swift_generator::generate_old_swift_service_client_async_implementation(o
 
       out << indent() << "let (__promise, __fulfill, __reject) = Promise<" << type_name((*f_iter)->get_returntype()) << ">.pendingPromise()\n\n"
           << indent() << "let __transport = __transportFactory.newTransport()\n"
-          << indent() << "let __protocol = __protocolFactory.newProtocolOnTransport(__transport)\n"
-          << "\n";
+          << indent() << "let __protocol = __protocolFactory.newProtocolOnTransport(__transport)\n\n";
 
       generate_swift_service_client_send_async_function_invocation(out, *f_iter);
       out << "\n";
@@ -2360,20 +2351,15 @@ void t_swift_generator::generate_swift_service_server_implementation(ostream& ou
 
     string args_type = function_args_helper_struct_type(tservice, *f_iter);
 
-    out << indent() << "processorHandlers[\"" << tfunction->get_name() << "\"] = { sequenceID, inProtocol, outProtocol, handler in\n"
-        << "\n";
+    out << indent() << "processorHandlers[\"" << tfunction->get_name() << "\"] = { sequenceID, inProtocol, outProtocol, handler in\n\n";
 
     indent_up();
     if (!gen_cocoa_) {
-      out << indent() << "let args = try " << args_type << ".read(from: inProtocol)\n"
-          << "\n"
-          << indent() << "try inProtocol.readMessageEnd()\n"
-          << "\n";
+      out << indent() << "let args = try " << args_type << ".read(from: inProtocol)\n\n"
+          << indent() << "try inProtocol.readMessageEnd()\n\n";
     } else {
-      out << indent() << "let args = try " << args_type << ".readValueFromProtocol(inProtocol)\n"
-          << "\n"
-          << indent() << "try inProtocol.readMessageEnd()\n"
-          << "\n";
+      out << indent() << "let args = try " << args_type << ".readValueFromProtocol(inProtocol)\n\n"
+          << indent() << "try inProtocol.readMessageEnd()\n\n";
     }
 
     if (!tfunction->is_oneway() ) {
@@ -2474,8 +2460,7 @@ void t_swift_generator::generate_swift_service_server_implementation(ostream& ou
   block_open(out);
 
   out << "\n";
-  out << indent() << "let (messageName, _, sequenceID) = try inProtocol.readMessageBegin()\n"
-      << "\n"
+  out << indent() << "let (messageName, _, sequenceID) = try inProtocol.readMessageBegin()\n\n"
       << indent() << "if let processorHandler = " << name << ".processorHandlers[messageName]";
   block_open(out);
   out << indent() << "do";

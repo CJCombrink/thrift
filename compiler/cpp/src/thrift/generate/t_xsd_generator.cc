@@ -132,8 +132,7 @@ void t_xsd_generator::close_generator() {
 void t_xsd_generator::generate_typedef(t_typedef* ttypedef) {
   indent(s_xsd_types_) << "<xsd:simpleType name=\"" << ttypedef->get_name() << "\">\n";
   indent_up();
-  indent(s_xsd_types_) << "<xsd:restriction base=\"" << type_name(ttypedef->get_type()) << "\" />"
-                       << "\n";
+  indent(s_xsd_types_) << "<xsd:restriction base=\"" << type_name(ttypedef->get_type()) << "\" />\n";
   indent_down();
   indent(s_xsd_types_) << "</xsd:simpleType>\n\n";
 }
@@ -224,12 +223,10 @@ void t_xsd_generator::generate_element(ostream& out,
   } else {
     if (attrs == nullptr) {
       indent(out) << "<xsd:element name=\"" << name << "\""
-                  << " type=\"" << type_name(ttype) << "\"" << soptional << snillable << " />"
-                  << "\n";
+                  << " type=\"" << type_name(ttype) << "\"" << soptional << snillable << " />\n";
     } else {
       // Wow, all this work for a SIMPLE TYPE with attributes?!?!?!
-      indent(out) << "<xsd:element name=\"" << name << "\"" << soptional << snillable << ">"
-                  << "\n";
+      indent(out) << "<xsd:element name=\"" << name << "\"" << soptional << snillable << ">\n";
       indent_up();
       indent(out) << "<xsd:complexType>\n";
       indent_up();

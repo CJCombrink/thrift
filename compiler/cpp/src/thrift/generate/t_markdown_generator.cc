@@ -391,10 +391,8 @@ void t_markdown_generator::generate_index() {
   f_out_.open(index_fname.c_str());
 
   f_out_ << "# Thrift declarations\n";
-  f_out_ << "| Module | Services & Functions | Data types | Constants |"
-         << "\n"
-         << "| --- | --- | --- | --- |"
-         << "\n";
+  f_out_ << "| Module | Services & Functions | Data types | Constants |\n"
+         << "| --- | --- | --- | --- |\n";
   vector<t_program*> programs;
   generate_program_toc_rows(program_, programs);
   f_out_ << "\n";

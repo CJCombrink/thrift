@@ -358,16 +358,14 @@ void t_javame_generator::generate_enum(t_enum* tenum) {
   indent(f_enum) << "}\n\n";
 
   indent(f_enum) << "/**\n";
-  indent(f_enum) << " * Get the integer value of this enum value, as defined in the Thrift IDL."
-                 << "\n";
+  indent(f_enum) << " * Get the integer value of this enum value, as defined in the Thrift IDL.\n";
   indent(f_enum) << " */\n";
   indent(f_enum) << "public int getValue() {\n";
   indent(f_enum) << "  return value;\n";
   indent(f_enum) << "}\n\n";
 
   indent(f_enum) << "/**\n";
-  indent(f_enum) << " * Find a the enum type by its integer value, as defined in the Thrift IDL."
-                 << "\n";
+  indent(f_enum) << " * Find a the enum type by its integer value, as defined in the Thrift IDL.\n";
   indent(f_enum) << " * @return null if the value is not found.\n";
   indent(f_enum) << " */\n";
   indent(f_enum) << "public static " + tenum->get_name() + " findByValue(int value) { \n";
@@ -494,8 +492,7 @@ void t_javame_generator::print_const_value(std::ostream& out,
     for (v_iter = val.begin(); v_iter != val.end(); ++v_iter) {
       string key = render_const_value(out, name, ktype, v_iter->first);
       string val = render_const_value(out, name, vtype, v_iter->second);
-      indent(out) << name << ".put(" << box_type(ktype, key) << ", " << box_type(vtype, val) << ");"
-                  << "\n";
+      indent(out) << name << ".put(" << box_type(ktype, key) << ", " << box_type(vtype, val) << ");\n";
     }
     if (!in_static) {
       indent_down();
@@ -708,8 +705,7 @@ void t_javame_generator::generate_union_constructor(ostream& out, t_struct* tstr
   indent(out) << "  super(setField, value);\n";
   indent(out) << "}\n\n";
 
-  indent(out) << "public " << type_name(tstruct) << "(" << type_name(tstruct) << " other) {"
-              << "\n";
+  indent(out) << "public " << type_name(tstruct) << "(" << type_name(tstruct) << " other) {\n";
   indent(out) << "  super(other);\n";
   indent(out) << "}\n";
 
@@ -747,14 +743,11 @@ void t_javame_generator::generate_union_getters_and_setters(ostream& out, t_stru
     generate_java_doc(out, field);
     indent(out) << "public " << type_name(field->get_type()) << " get"
                 << get_cap_name(field->get_name()) << "() {\n";
-    indent(out) << "  if (getSetField() == _Fields." << constant_name(field->get_name()) << ") {"
-                << "\n";
-    indent(out) << "    return (" << type_name(field->get_type(), true) << ")getFieldValue();"
-                << "\n";
+    indent(out) << "  if (getSetField() == _Fields." << constant_name(field->get_name()) << ") {\n";
+    indent(out) << "    return (" << type_name(field->get_type(), true) << ")getFieldValue();\n";
     indent(out) << "  } else {\n";
     indent(out) << "    throw new RuntimeException(\"Cannot get field '" << field->get_name()
-                << "' because union is currently set to \" + getFieldDesc(getSetField()).name);"
-                << "\n";
+                << "' because union is currently set to \" + getFieldDesc(getSetField()).name);\n";
     indent(out) << "  }\n";
     indent(out) << "}\n";
 
@@ -787,8 +780,7 @@ void t_javame_generator::generate_union_abstract_methods(ostream& out, t_struct*
 
 void t_javame_generator::generate_check_type(ostream& out, t_struct* tstruct) {
   indent(out)
-      << "protected void checkType(_Fields setField, Object value) throws ClassCastException {"
-      << "\n";
+      << "protected void checkType(_Fields setField, Object value) throws ClassCastException {\n";
   indent_up();
 
   indent(out) << "switch (setField) {\n";
@@ -822,8 +814,7 @@ void t_javame_generator::generate_check_type(ostream& out, t_struct* tstruct) {
 }
 
 void t_javame_generator::generate_read_value(ostream& out, t_struct* tstruct) {
-  indent(out) << "protected Object readValue(TProtocol iprot, TField field) throws TException {"
-              << "\n";
+  indent(out) << "protected Object readValue(TProtocol iprot, TField field) throws TException {\n";
 
   indent_up();
 
@@ -841,11 +832,9 @@ void t_javame_generator::generate_read_value(ostream& out, t_struct* tstruct) {
 
     indent(out) << "case " << constant_name(field->get_name()) << ":\n";
     indent_up();
-    indent(out) << "if (field.type == " << constant_name(field->get_name()) << "_FIELD_DESC.type) {"
-                << "\n";
+    indent(out) << "if (field.type == " << constant_name(field->get_name()) << "_FIELD_DESC.type) {\n";
     indent_up();
-    indent(out) << type_name(field->get_type(), true, false) << " " << field->get_name() << ";"
-                << "\n";
+    indent(out) << type_name(field->get_type(), true, false) << " " << field->get_name() << ";\n";
     generate_deserialize_field(out, field, "");
     indent(out) << "return " << field->get_name() << ";\n";
     indent_down();
@@ -962,11 +951,9 @@ void t_javame_generator::generate_union_comparisons(ostream& out, t_struct* tstr
   out << "\n";
 
   indent(out) << "public int compareTo(" << type_name(tstruct) << " other) {\n";
-  indent(out) << "  int lastComparison = TBaseHelper.compareTo(getSetField(), other.getSetField());"
-              << "\n";
+  indent(out) << "  int lastComparison = TBaseHelper.compareTo(getSetField(), other.getSetField());\n";
   indent(out) << "  if (lastComparison == 0) {\n";
-  indent(out) << "    return TBaseHelper.compareTo(getFieldValue(), other.getFieldValue());"
-              << "\n";
+  indent(out) << "    return TBaseHelper.compareTo(getFieldValue(), other.getFieldValue());\n";
   indent(out) << "  }\n";
   indent(out) << "  return lastComparison;\n";
   indent(out) << "}\n";
@@ -977,8 +964,7 @@ void t_javame_generator::generate_union_hashcode(ostream& out, t_struct* tstruct
   (void)tstruct;
   indent(out) << "/**\n";
   indent(out)
-      << " * If you'd like this to perform more respectably, use the hashcode generator option."
-      << "\n";
+      << " * If you'd like this to perform more respectably, use the hashcode generator option.\n";
   indent(out) << " */\n";
   indent(out) << "public int hashCode() {\n";
   indent(out) << "  return 0;\n";
@@ -1040,8 +1026,7 @@ void t_javame_generator::generate_java_struct_definition(ostream& out,
     int i = 0;
     for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
       if (!type_can_be_null((*m_iter)->get_type())) {
-        indent(out) << "private static final int " << isset_field_id(*m_iter) << " = " << i << ";"
-                    << "\n";
+        indent(out) << "private static final int " << isset_field_id(*m_iter) << " = " << i << ";\n";
         i++;
       }
     }
@@ -1096,8 +1081,7 @@ void t_javame_generator::generate_java_struct_definition(ostream& out,
     indent(out) << "this();\n";
     for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
       if ((*m_iter)->get_req() != t_field::T_OPTIONAL) {
-        indent(out) << "this." << (*m_iter)->get_name() << " = " << (*m_iter)->get_name() << ";"
-                    << "\n";
+        indent(out) << "this." << (*m_iter)->get_name() << " = " << (*m_iter)->get_name() << ";\n";
         generate_isset_set(out, (*m_iter));
       }
     }
@@ -1109,8 +1093,7 @@ void t_javame_generator::generate_java_struct_definition(ostream& out,
   indent(out) << "/**\n";
   indent(out) << " * Performs a deep copy on <i>other</i>.\n";
   indent(out) << " */\n";
-  indent(out) << "public " << tstruct->get_name() << "(" << tstruct->get_name() << " other) {"
-              << "\n";
+  indent(out) << "public " << tstruct->get_name() << "(" << tstruct->get_name() << " other) {\n";
   indent_up();
 
   if (has_bit_vector(tstruct)) {
@@ -1252,8 +1235,7 @@ void t_javame_generator::generate_java_struct_compare_to(ostream& out, t_struct*
   indent_up();
 
   indent(out) << "if (!getClass().equals(otherObject.getClass())) {\n";
-  indent(out) << "  return getClass().getName().compareTo(otherObject.getClass().getName());"
-              << "\n";
+  indent(out) << "  return getClass().getName().compareTo(otherObject.getClass().getName());\n";
   indent(out) << "}\n";
   out << "\n";
   indent(out) << type_name(tstruct) << " other = (" << type_name(tstruct) << ")otherObject;";
@@ -1337,8 +1319,7 @@ void t_javame_generator::generate_java_struct_reader(ostream& out, t_struct* tst
     generate_deserialize_field(out, *f_iter, "this.");
     generate_isset_set(out, *f_iter);
     indent_down();
-    out << indent() << "} else { \n" << indent() << "  TProtocolUtil.skip(iprot, field.type);"
-        << "\n" << indent() << "}\n" << indent() << "break;\n";
+    out << indent() << "} else { \n" << indent() << "  TProtocolUtil.skip(iprot, field.type);\n" << indent() << "}\n" << indent() << "break;\n";
     indent_down();
   }
 
@@ -1434,8 +1415,7 @@ void t_javame_generator::generate_java_struct_writer(ostream& out, t_struct* tst
     }
   }
   // Write the struct map
-  out << indent() << "oprot.writeFieldStop();\n" << indent() << "oprot.writeStructEnd();"
-      << "\n";
+  out << indent() << "oprot.writeFieldStop();\n" << indent() << "oprot.writeStructEnd();\n";
 
   indent_down();
   out << indent() << "}\n\n";
@@ -1603,8 +1583,7 @@ void t_javame_generator::generate_java_bean_boilerplate(ostream& out, t_struct* 
       indent_up();
       indent(out) << "if (this." << field_name << " == null) {\n";
       indent_up();
-      indent(out) << "this." << field_name << " = new " << type_name(type, false, true) << "();"
-                  << "\n";
+      indent(out) << "this." << field_name << " = new " << type_name(type, false, true) << "();\n";
       indent_down();
       indent(out) << "}\n";
       if (type->is_set()) {
@@ -1629,8 +1608,7 @@ void t_javame_generator::generate_java_bean_boilerplate(ostream& out, t_struct* 
       indent_up();
       indent(out) << "if (this." << field_name << " == null) {\n";
       indent_up();
-      indent(out) << "this." << field_name << " = new " << type_name(type, false, true) << "();"
-                  << "\n";
+      indent(out) << "this." << field_name << " = new " << type_name(type, false, true) << "();\n";
       indent_down();
       indent(out) << "}\n";
       indent(out) << "this." << field_name << ".put(key, val);\n";
@@ -1688,8 +1666,7 @@ void t_javame_generator::generate_java_bean_boilerplate(ostream& out, t_struct* 
     indent_down();
     indent(out) << "}\n\n";
 
-    indent(out) << "public void set" << cap_name << get_cap_name("isSet") << "(boolean value) {"
-                << "\n";
+    indent(out) << "public void set" << cap_name << get_cap_name("isSet") << "(boolean value) {\n";
     indent_up();
     if (type_can_be_null(type)) {
       indent(out) << "if (!value) {\n";
@@ -1712,8 +1689,7 @@ void t_javame_generator::generate_java_struct_tostring(ostream& out, t_struct* t
   out << indent() << "public String toString() {\n";
   indent_up();
 
-  out << indent() << "StringBuffer sb = new StringBuffer(\"" << tstruct->get_name() << "(\");"
-      << "\n";
+  out << indent() << "StringBuffer sb = new StringBuffer(\"" << tstruct->get_name() << "(\");\n";
   out << indent() << "boolean first = true;\n\n";
 
   const vector<t_field*>& fields = tstruct->get_members();
@@ -1904,8 +1880,7 @@ void t_javame_generator::generate_primitive_service_interface(t_service* tservic
 
   f_iface << autogen_comment() << java_package() << java_type_imports() << java_thrift_imports();
   generate_java_doc(f_iface, tservice);
-  f_iface << "public interface " << service_name_ << "Iface" << extends_iface << " {\n"
-          << "\n";
+  f_iface << "public interface " << service_name_ << "Iface" << extends_iface << " {\n\n";
   vector<t_function*> functions = tservice->get_functions();
   vector<t_function*>::iterator f_iter;
   for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
@@ -2088,9 +2063,7 @@ void t_javame_generator::generate_service_client(t_service* tservice) {
       f_service_ << indent() << "TMessage msg = iprot_.readMessageBegin();\n" << indent()
                  << "if (msg.type == TMessageType.EXCEPTION) {\n" << indent()
                  << "  TApplicationException x = TApplicationException.read(iprot_);\n"
-                 << indent() << "  iprot_.readMessageEnd();\n" << indent() << "  throw x;"
-                 << "\n" << indent() << "}\n" << indent() << "if (msg.seqid != seqid_) {"
-                 << "\n" << indent()
+                 << indent() << "  iprot_.readMessageEnd();\n" << indent() << "  throw x;\n" << indent() << "}\n" << indent() << "if (msg.seqid != seqid_) {\n" << indent()
                  << "  throw new TApplicationException(TApplicationException.BAD_SEQUENCE_ID, \""
                  << (*f_iter)->get_name() << " failed: out of sequence response\");\n"
                  << indent() << "}\n" << indent() << resultname << " result = new "
@@ -2172,8 +2145,7 @@ void t_javame_generator::generate_service_server(t_service* tservice) {
   if (extends.empty()) {
     f_service_
         << indent() << "protected static interface ProcessFunction {\n" << indent()
-        << "  public void process(int seqid, TProtocol iprot, TProtocol oprot) throws TException;"
-        << "\n" << indent() << "}\n\n";
+        << "  public void process(int seqid, TProtocol iprot, TProtocol oprot) throws TException;\n" << indent() << "}\n\n";
   }
 
   f_service_ << indent() << "private Iface iface_;\n";
@@ -2185,8 +2157,7 @@ void t_javame_generator::generate_service_server(t_service* tservice) {
   f_service_ << "\n";
 
   // Generate the server implementation
-  indent(f_service_) << "public boolean process(TProtocol iprot, TProtocol oprot) throws TException"
-                     << "\n";
+  indent(f_service_) << "public boolean process(TProtocol iprot, TProtocol oprot) throws TException\n";
   scope_up(f_service_);
 
   f_service_ << indent() << "TMessage msg = iprot.readMessageBegin();\n";
@@ -2201,9 +2172,7 @@ void t_javame_generator::generate_service_server(t_service* tservice) {
       << "  TApplicationException x = new "
          "TApplicationException(TApplicationException.UNKNOWN_METHOD, \"Invalid method name: "
          "'\"+msg.name+\"'\");\n" << indent()
-      << "  oprot.writeMessageBegin(new TMessage(msg.name, TMessageType.EXCEPTION, msg.seqid));"
-      << "\n" << indent() << "  x.write(oprot);\n" << indent() << "  oprot.writeMessageEnd();"
-      << "\n" << indent() << "  oprot.getTransport().flush();\n" << indent()
+      << "  oprot.writeMessageBegin(new TMessage(msg.name, TMessageType.EXCEPTION, msg.seqid));\n" << indent() << "  x.write(oprot);\n" << indent() << "  oprot.writeMessageEnd();\n" << indent() << "  oprot.getTransport().flush();\n" << indent()
       << "  return true;\n" << indent() << "}\n" << indent()
       << "fn.process(msg.seqid, iprot, oprot);\n";
 
@@ -2255,14 +2224,12 @@ void t_javame_generator::generate_function_helpers(t_function* tfunction) {
 void t_javame_generator::generate_process_function(t_service* tservice, t_function* tfunction) {
   (void)tservice;
   // Open class
-  indent(f_service_) << "private class " << tfunction->get_name() << " implements ProcessFunction {"
-                     << "\n";
+  indent(f_service_) << "private class " << tfunction->get_name() << " implements ProcessFunction {\n";
   indent_up();
 
   // Open function
   indent(f_service_)
-      << "public void process(int seqid, TProtocol iprot, TProtocol oprot) throws TException"
-      << "\n";
+      << "public void process(int seqid, TProtocol iprot, TProtocol oprot) throws TException\n";
   scope_up(f_service_);
 
   string argsname = tfunction->get_name() + "_args";
@@ -2277,12 +2244,10 @@ void t_javame_generator::generate_process_function(t_service* tservice, t_functi
   indent_up();
   f_service_ << indent() << "iprot.readMessageEnd();\n" << indent()
              << "TApplicationException x = new "
-                "TApplicationException(TApplicationException.PROTOCOL_ERROR, e.getMessage());"
-             << "\n" << indent() << "oprot.writeMessageBegin(new TMessage(\""
+                "TApplicationException(TApplicationException.PROTOCOL_ERROR, e.getMessage());\n" << indent() << "oprot.writeMessageBegin(new TMessage(\""
              << tfunction->get_name() << "\", TMessageType.EXCEPTION, seqid));\n" << indent()
              << "x.write(oprot);\n" << indent() << "oprot.writeMessageEnd();\n"
-             << indent() << "oprot.getTransport().flush();\n" << indent() << "return;"
-             << "\n";
+             << indent() << "oprot.getTransport().flush();\n" << indent() << "return;\n";
   indent_down();
   f_service_ << indent() << "}\n";
   f_service_ << indent() << "iprot.readMessageEnd();\n";
@@ -2350,11 +2315,9 @@ void t_javame_generator::generate_process_function(t_service* tservice, t_functi
     indent_up();
     f_service_ << indent() << "TApplicationException x = new "
                               "TApplicationException(TApplicationException.INTERNAL_ERROR, "
-                              "\"Internal error processing " << tfunction->get_name() << "\");"
-               << "\n" << indent() << "oprot.writeMessageBegin(new TMessage(\""
+                              "\"Internal error processing " << tfunction->get_name() << "\");\n" << indent() << "oprot.writeMessageBegin(new TMessage(\""
                << tfunction->get_name() << "\", TMessageType.EXCEPTION, seqid));\n"
-               << indent() << "x.write(oprot);\n" << indent() << "oprot.writeMessageEnd();"
-               << "\n" << indent() << "oprot.getTransport().flush();\n" << indent()
+               << indent() << "x.write(oprot);\n" << indent() << "oprot.writeMessageEnd();\n" << indent() << "oprot.getTransport().flush();\n" << indent()
                << "return;\n";
     indent_down();
     f_service_ << indent() << "}\n";
@@ -2372,8 +2335,7 @@ void t_javame_generator::generate_process_function(t_service* tservice, t_functi
   }
 
   f_service_ << indent() << "oprot.writeMessageBegin(new TMessage(\"" << tfunction->get_name()
-             << "\", TMessageType.REPLY, seqid));\n" << indent() << "result.write(oprot);"
-             << "\n" << indent() << "oprot.writeMessageEnd();\n" << indent()
+             << "\", TMessageType.REPLY, seqid));\n" << indent() << "result.write(oprot);\n" << indent() << "oprot.writeMessageEnd();\n" << indent()
              << "oprot.getTransport().flush();\n";
 
   // Close function
@@ -2443,8 +2405,7 @@ void t_javame_generator::generate_deserialize_field(ostream& out, t_field* tfiel
     out << "\n";
   } else if (type->is_enum()) {
     indent(out) << name << " = "
-                << type_name(tfield->get_type(), true, false) + ".findByValue(iprot.readI32());"
-                << "\n";
+                << type_name(tfield->get_type(), true, false) + ".findByValue(iprot.readI32());\n";
   } else {
     printf("DO NOT KNOW HOW TO DESERIALIZE FIELD '%s' TYPE '%s'\n",
            tfield->get_name().c_str(),
@@ -2679,8 +2640,7 @@ void t_javame_generator::generate_serialize_container(ostream& out, t_type* ttyp
                 << ", " << prefix << ".size()));\n";
   } else if (ttype->is_list()) {
     indent(out) << "oprot.writeListBegin(new TList("
-                << type_to_enum(((t_list*)ttype)->get_elem_type()) << ", " << prefix << ".size()));"
-                << "\n";
+                << type_to_enum(((t_list*)ttype)->get_elem_type()) << ", " << prefix << ".size()));\n";
   }
 
   string iter = tmp("_iter");
@@ -3072,8 +3032,7 @@ void t_javame_generator::generate_deep_copy_container(ostream& out,
     out << "\n";
 
     indent(out) << type_name(key_type, true, false) << " " << iterator_element_name << "_key = ("
-                << type_name(key_type, true, false) << ")" << enumeration_name << ".nextElement();"
-                << "\n";
+                << type_name(key_type, true, false) << ")" << enumeration_name << ".nextElement();\n";
     indent(out) << type_name(val_type, true, false) << " " << iterator_element_name << "_value = ("
                 << type_name(val_type, true, false) << ")" << source_name << ".get("
                 << iterator_element_name << "_key);\n";
@@ -3133,8 +3092,7 @@ void t_javame_generator::generate_deep_copy_container(ostream& out,
                 << ".elements(); " << enumeration_name << ".hasMoreElements(); ) {\n";
     indent_up();
     indent(out) << type_name(elem_type, true, false) << " " << iterator_element_name << " = ("
-                << type_name(elem_type, true, false) << ")" << enumeration_name << ".nextElement();"
-                << "\n";
+                << type_name(elem_type, true, false) << ")" << enumeration_name << ".nextElement();\n";
     if (elem_type->is_container()) {
       // recursive deep copy
       generate_deep_copy_container(out, iterator_element_name, "", result_element_name, elem_type);
@@ -3204,8 +3162,7 @@ std::string t_javame_generator::generate_isset_check(std::string field_name) {
 
 void t_javame_generator::generate_isset_set(ostream& out, t_field* field) {
   if (!type_can_be_null(field->get_type())) {
-    indent(out) << "set" << get_cap_name(field->get_name()) << get_cap_name("isSet") << "(true);"
-                << "\n";
+    indent(out) << "set" << get_cap_name(field->get_name()) << get_cap_name("isSet") << "(true);\n";
   }
 }
 

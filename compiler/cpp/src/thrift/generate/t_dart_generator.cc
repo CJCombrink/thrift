@@ -493,8 +493,7 @@ void t_dart_generator::generate_enum(t_enum* tenum) {
   vector<t_enum_value*>::iterator c_iter;
   for (c_iter = constants.begin(); c_iter != constants.end(); ++c_iter) {
     int value = (*c_iter)->get_value();
-    indent(f_enum) << "static const int " << (*c_iter)->get_name() << " = " << value << ";"
-                   << "\n";
+    indent(f_enum) << "static const int " << (*c_iter)->get_name() << " = " << value << ";\n";
   }
 
   // Create a static Set with all valid values for this enum
@@ -793,8 +792,7 @@ void t_dart_generator::generate_dart_struct_definition(ostream& out,
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
     indent(out) << "static final TField _" << constant_name((*m_iter)->get_name())
                 << "_FIELD_DESC = new TField(\"" << (*m_iter)->get_name() << "\", "
-                << type_to_enum((*m_iter)->get_type()) << ", " << (*m_iter)->get_key() << ");"
-                << "\n";
+                << type_to_enum((*m_iter)->get_type()) << ", " << (*m_iter)->get_key() << ");\n";
   }
 
   out << "\n";
@@ -964,8 +962,7 @@ void t_dart_generator::generate_dart_validator(ostream& out, t_struct* tstruct) 
         indent(out) << "if (" << field_name << " == null)";
         scope_up(out);
         indent(out) << "throw new TProtocolError(TProtocolErrorType.UNKNOWN, \"Required field '"
-                    << field_name << "' was not present! Struct: \" + toString());"
-                    << "\n";
+                    << field_name << "' was not present! Struct: \" + toString());\n";
         scope_down(out);
       } else {
         indent(out) << "// alas, we cannot check '" << field_name
@@ -1042,8 +1039,7 @@ void t_dart_generator::generate_dart_struct_writer(ostream& out, t_struct* tstru
     }
   }
   // Write the struct map
-  indent(out) << "oprot.writeFieldStop();\n" << indent() << "oprot.writeStructEnd();"
-      << "\n";
+  indent(out) << "oprot.writeFieldStop();\n" << indent() << "oprot.writeStructEnd();\n";
 
   scope_down(out, endl2);
 }
@@ -2054,15 +2050,13 @@ void t_dart_generator::generate_serialize_container(ostream& out, t_type* ttype,
   if (ttype->is_map()) {
     string iter = tmp("_key");
     indent(out) << "oprot.writeMapBegin(new TMap(" << type_to_enum(((t_map*)ttype)->get_key_type())
-                << ", " << type_to_enum(((t_map*)ttype)->get_val_type()) << ", " << prefix << ".length));"
-                << "\n";
+                << ", " << type_to_enum(((t_map*)ttype)->get_val_type()) << ", " << prefix << ".length));\n";
   } else if (ttype->is_set()) {
     indent(out) << "oprot.writeSetBegin(new TSet(" << type_to_enum(((t_set*)ttype)->get_elem_type())
                 << ", " << prefix << ".length));\n";
   } else if (ttype->is_list()) {
     indent(out) << "oprot.writeListBegin(new TList("
-                << type_to_enum(((t_list*)ttype)->get_elem_type()) << ", " << prefix << ".length));"
-                << "\n";
+                << type_to_enum(((t_list*)ttype)->get_elem_type()) << ", " << prefix << ".length));\n";
   }
 
   string iter = tmp("elem");

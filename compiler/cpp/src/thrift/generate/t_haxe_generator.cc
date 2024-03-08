@@ -764,8 +764,7 @@ void t_haxe_generator::generate_haxe_struct_definition(ostream& out,
   out << "implements TBase {\n\n";
   indent_up();
 
-  indent(out) << "static var STRUCT_DESC = { new TStruct(\"" << tstruct->get_name() << "\"); };"
-              << "\n";
+  indent(out) << "static var STRUCT_DESC = { new TStruct(\"" << tstruct->get_name() << "\"); };\n";
 
   const vector<t_field*>& members = tstruct->get_members();
   vector<t_field*>::const_iterator m_iter;
@@ -773,8 +772,7 @@ void t_haxe_generator::generate_haxe_struct_definition(ostream& out,
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
     indent(out) << "static var " << constant_name((*m_iter)->get_name())
                 << "_FIELD_DESC = { new TField(\"" << (*m_iter)->get_name() << "\", "
-                << type_to_enum((*m_iter)->get_type()) << ", " << (*m_iter)->get_key() << "); };"
-                << "\n";
+                << type_to_enum((*m_iter)->get_type()) << ", " << (*m_iter)->get_key() << "); };\n";
   }
   out << "\n";
 
@@ -801,8 +799,7 @@ void t_haxe_generator::generate_haxe_struct_definition(ostream& out,
   if (members.size() > 0) {
     for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
       if (!type_can_be_null((*m_iter)->get_type())) {
-        indent(out) << "private var __isset_" << (*m_iter)->get_name() << " : Bool = false;"
-                    << "\n";
+        indent(out) << "private var __isset_" << (*m_iter)->get_name() << " : Bool = false;\n";
       }
     }
   }
@@ -815,8 +812,7 @@ void t_haxe_generator::generate_haxe_struct_definition(ostream& out,
     generate_haxe_meta_data_map(out, tstruct);
     indent(out) << "{\n";
     indent_up();
-    indent(out) << "FieldMetaData.addStructMetaDataMap(" << type_name(tstruct) << ", metaDataMap);"
-                << "\n";
+    indent(out) << "FieldMetaData.addStructMetaDataMap(" << type_name(tstruct) << ", metaDataMap);\n";
     indent_down();
     indent(out) << "}\n";
     indent(out) << "}\n";
@@ -871,8 +867,7 @@ void t_haxe_generator::generate_haxe_struct_reader(ostream& out, t_struct* tstru
   scope_up(out);
 
   // Declare stack tmp variables and read struct header
-  out << indent() << "var field : TField;\n" << indent() << "iprot.readStructBegin();"
-      << "\n";
+  out << indent() << "var field : TField;\n" << indent() << "iprot.readStructBegin();\n";
 
   // Loop over reading in fields
   indent(out) << "while (true)\n";
@@ -903,14 +898,12 @@ void t_haxe_generator::generate_haxe_struct_reader(ostream& out, t_struct* tstru
     generate_deserialize_field(out, *f_iter, "this.");
     generate_isset_set(out, *f_iter);
     indent_down();
-    out << indent() << "} else { \n" << indent() << "  TProtocolUtil.skip(iprot, field.type);"
-        << "\n" << indent() << "}\n";
+    out << indent() << "} else { \n" << indent() << "  TProtocolUtil.skip(iprot, field.type);\n" << indent() << "}\n";
     indent_down();
   }
 
   // In the default case we skip the field
-  out << indent() << "default:\n" << indent() << "  TProtocolUtil.skip(iprot, field.type);"
-      << "\n";
+  out << indent() << "default:\n" << indent() << "  TProtocolUtil.skip(iprot, field.type);\n";
 
   scope_down(out);
 
@@ -1273,8 +1266,7 @@ void t_haxe_generator::generate_property_getters_setters(ostream& out, t_struct*
     // Simple setter
     generate_haxe_doc(out, field);
     indent(out) << "public function set_" << field_name << "(" << field_name << ":"
-                << get_cap_name(type_name(type)) << ") : " << get_cap_name(type_name(type)) << " {"
-                << "\n";
+                << get_cap_name(type_name(type)) << ") : " << get_cap_name(type_name(type)) << " {\n";
     indent_up();
     indent(out) << "this." << field_name << " = " << field_name << ";\n";
     generate_isset_set(out, field);
@@ -1593,8 +1585,7 @@ void t_haxe_generator::generate_service(t_service* tservice) {
   f_service_name = package_dir_ + "/" + get_cap_name(service_name_) + "Processor.hx";
   f_service_.open(f_service_name.c_str());
 
-  f_service_ << autogen_comment() << haxe_package() << ";\n"
-             << "\n"
+  f_service_ << autogen_comment() << haxe_package() << ";\n\n"
              << haxe_type_imports()
              << haxe_thrift_imports()
              << haxe_thrift_gen_imports(tservice)
@@ -2031,14 +2022,12 @@ void t_haxe_generator::generate_service_server(t_service* tservice) {
 
   if (extends.empty()) {
     f_service_ << indent()
-               << "private var PROCESS_MAP = new StringMap< Int->TProtocol->TProtocol->Void >();"
-               << "\n";
+               << "private var PROCESS_MAP = new StringMap< Int->TProtocol->TProtocol->Void >();\n";
   }
 
   f_service_ << "\n";
 
-  indent(f_service_) << "public function new( iface : " << get_cap_name(service_name_) << "_service)"
-                     << "\n";
+  indent(f_service_) << "public function new( iface : " << get_cap_name(service_name_) << "_service)\n";
   scope_up(f_service_);
   if (!extends.empty()) {
     f_service_ << indent() << "super(iface);\n";
@@ -2059,8 +2048,7 @@ void t_haxe_generator::generate_service_server(t_service* tservice) {
     override = "override ";
   }
   indent(f_service_) << override
-                     << "public function process( iprot : TProtocol, oprot : TProtocol) : Bool"
-                     << "\n";
+                     << "public function process( iprot : TProtocol, oprot : TProtocol) : Bool\n";
   scope_up(f_service_);
 
   f_service_ << indent() << "var msg : TMessage = iprot.readMessageBegin();\n";
@@ -2135,16 +2123,14 @@ void t_haxe_generator::generate_process_function(t_service* tservice, t_function
   indent_up();
 
   // Open function
-  indent(f_service_) << "return function( seqid : Int, iprot : TProtocol, oprot : TProtocol) : Void"
-                     << "\n";
+  indent(f_service_) << "return function( seqid : Int, iprot : TProtocol, oprot : TProtocol) : Void\n";
   scope_up(f_service_);
 
   string argsname = get_cap_name(tfunction->get_name() + "_args");
   string resultname = get_cap_name(tfunction->get_name() + "_result");
 
   f_service_ << indent() << "var args : " << argsname << " = new " << argsname << "();\n"
-             << indent() << "args.read(iprot);\n" << indent() << "iprot.readMessageEnd();"
-             << "\n";
+             << indent() << "args.read(iprot);\n" << indent() << "iprot.readMessageEnd();\n";
 
   t_struct* xs = tfunction->get_xceptions();
   const std::vector<t_field*>& xceptions = xs->get_members();
@@ -2232,8 +2218,7 @@ void t_haxe_generator::generate_process_function(t_service* tservice, t_function
   }
 
   f_service_ << indent() << "oprot.writeMessageBegin(new TMessage(\"" << tfunction->get_name()
-             << "\", TMessageType.REPLY, seqid));\n" << indent() << "result.write(oprot);"
-             << "\n" << indent() << "oprot.writeMessageEnd();\n" << indent()
+             << "\", TMessageType.REPLY, seqid));\n" << indent() << "result.write(oprot);\n" << indent() << "oprot.writeMessageEnd();\n" << indent()
              << "oprot.getTransport().flush();\n";
 
   // Close function
@@ -2532,15 +2517,13 @@ void t_haxe_generator::generate_serialize_container(ostream& out, t_type* ttype,
     indent(out) << "}\n";
 
     indent(out) << "oprot.writeMapBegin(new TMap(" << type_to_enum(((t_map*)ttype)->get_key_type())
-                << ", " << type_to_enum(((t_map*)ttype)->get_val_type()) << ", " << counter << "));"
-                << "\n";
+                << ", " << type_to_enum(((t_map*)ttype)->get_val_type()) << ", " << counter << "));\n";
   } else if (ttype->is_set()) {
     indent(out) << "oprot.writeSetBegin(new TSet(" << type_to_enum(((t_set*)ttype)->get_elem_type())
                 << ", " << prefix << ".size));\n";
   } else if (ttype->is_list()) {
     indent(out) << "oprot.writeListBegin(new TList("
-                << type_to_enum(((t_list*)ttype)->get_elem_type()) << ", " << prefix << ".length));"
-                << "\n";
+                << type_to_enum(((t_list*)ttype)->get_elem_type()) << ", " << prefix << ".length));\n";
   }
 
   string iter = tmp("elem");

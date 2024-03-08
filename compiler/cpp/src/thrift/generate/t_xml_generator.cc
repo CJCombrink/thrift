@@ -246,8 +246,7 @@ void t_xml_generator::write_element_string(string name, string val) {
   close_top_element();
   top_element_is_empty = false;
   f_xml_ << indent()
-    << "<" << name << ">" << escape_xml_string(val) << "</" << name << ">"
-    << "\n";
+    << "<" << name << ">" << escape_xml_string(val) << "</" << name << ">\n";
 }
 
 string t_xml_generator::escape_xml_string(const string& input) {

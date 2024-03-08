@@ -483,8 +483,7 @@ void t_lua_generator::generate_lua_struct_writer(ostream& out, t_struct* tstruct
     indent(out) << "if self." << (*f_iter)->get_name() << " ~= nil then\n";
     indent_up();
     indent(out) << "oprot:writeFieldBegin('" << (*f_iter)->get_name() << "', "
-                << type_to_enum((*f_iter)->get_type()) << ", " << (*f_iter)->get_key() << ")"
-                << "\n";
+                << type_to_enum((*f_iter)->get_type()) << ", " << (*f_iter)->get_key() << ")\n";
 
     // Write field contents
     generate_serialize_field(out, *f_iter, "self.");
@@ -629,8 +628,7 @@ void t_lua_generator::generate_service_client(ostream& out, t_service* tservice)
       indent_up();
 
       out << indent() << "local fname, mtype, rseqid = self.iprot:"
-          << "readMessageBegin()\n" << indent() << "if mtype == TMessageType.EXCEPTION then"
-          << "\n" << indent() << "  local x = TApplicationException:new{}\n" << indent()
+          << "readMessageBegin()\n" << indent() << "if mtype == TMessageType.EXCEPTION then\n" << indent() << "  local x = TApplicationException:new{}\n" << indent()
           << "  x:read(self.iprot)\n" << indent() << "  self.iprot:readMessageEnd()\n"
           << indent() << "  error(x)\n" << indent() << "end\n" << indent()
           << "local result = " << funcname << "_result:new{}\n" << indent()
@@ -638,8 +636,7 @@ void t_lua_generator::generate_service_client(ostream& out, t_service* tservice)
 
       // Return the result if it's not a void function
       if (!(*f_iter)->get_returntype()->is_void()) {
-        out << indent() << "if result.success ~= nil then\n" << indent() << "  return result.success"
-            << "\n";
+        out << indent() << "if result.success ~= nil then\n" << indent() << "  return result.success\n";
 
         // Throw custom exceptions
         const std::vector<t_field*>& xf = (*f_iter)->get_xceptions()->get_members();
@@ -685,8 +682,7 @@ void t_lua_generator::generate_service_processor(ostream& out, t_service* tservi
   indent_up();
   out << "\n" << indent() << "iprot:skip(TType.STRUCT)\n" << indent()
       << "iprot:readMessageEnd()\n" << indent() << "x = TApplicationException:new{\n"
-      << indent() << "  errorCode = TApplicationException.UNKNOWN_METHOD\n" << indent() << "}"
-      << "\n" << indent() << "oprot:writeMessageBegin(name, TMessageType.EXCEPTION, "
+      << indent() << "  errorCode = TApplicationException.UNKNOWN_METHOD\n" << indent() << "}\n" << indent() << "oprot:writeMessageBegin(name, TMessageType.EXCEPTION, "
       << "seqid)\n" << indent() << "x:write(oprot)\n" << indent()
       << "oprot:writeMessageEnd()\n" << indent() << "oprot.trans:flush()\n";
   indent_down();
@@ -750,8 +746,7 @@ void t_lua_generator::generate_process_function(ostream& out,
       if (xf.size() > 0) {
           vector<t_field*>::const_iterator x_iter;
           for (x_iter = xf.begin(); x_iter != xf.end(); ++x_iter) {
-              out << indent() << "elseif ttype(res) == '" << (*x_iter)->get_type()->get_name() << "' then"
-                  << "\n" << indent() << "  result." << (*x_iter)->get_name() << " = res\n";
+              out << indent() << "elseif ttype(res) == '" << (*x_iter)->get_type()->get_name() << "' then\n" << indent() << "  result." << (*x_iter)->get_name() << " = res\n";
           }
       }
 
@@ -865,8 +860,7 @@ void t_lua_generator::generate_deserialize_struct(ostream& out,
                                                   t_struct* tstruct,
                                                   bool local,
                                                   string prefix) {
-  indent(out) << (local ? "local " : "") << prefix << " = " << tstruct->get_name() << ":new{}"
-              << "\n" << indent() << prefix << ":read(iprot)\n";
+  indent(out) << (local ? "local " : "") << prefix << " = " << tstruct->get_name() << ":new{}\n" << indent() << prefix << ":read(iprot)\n";
 }
 
 void t_lua_generator::generate_deserialize_container(ostream& out,
@@ -886,8 +880,7 @@ void t_lua_generator::generate_deserialize_container(ostream& out,
   // Declare variables, read header
   indent(out) << (local ? "local " : "") << prefix << " = {}\n";
   if (ttype->is_map()) {
-    indent(out) << "local " << ktype << ", " << vtype << ", " << size << " = iprot:readMapBegin() "
-                << "\n";
+    indent(out) << "local " << ktype << ", " << vtype << ", " << size << " = iprot:readMapBegin() \n";
   } else if (ttype->is_set()) {
     indent(out) << "local " << etype << ", " << size << " = iprot:readSetBegin()\n";
   } else if (ttype->is_list()) {

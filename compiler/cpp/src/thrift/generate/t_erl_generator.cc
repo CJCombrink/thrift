@@ -270,8 +270,7 @@ void t_erl_generator::init_generator() {
                 << "-module(" << program_module_name << "_types).\n"
                 << erl_imports() << "\n";
 
-  f_types_file_ << "-include(\"" << program_module_name << "_types.hrl\").\n"
-                  << "\n";
+  f_types_file_ << "-include(\"" << program_module_name << "_types.hrl\").\n\n";
 
   f_types_hrl_file_ << render_includes() << "\n";
 
@@ -285,8 +284,7 @@ void t_erl_generator::init_generator() {
   f_consts_file_ << erl_autogen_comment() << "\n"
                  << "-module(" << program_module_name << "_constants).\n"
                  << erl_imports() << "\n"
-                 << "-include(\"" << program_module_name << "_types.hrl\").\n"
-                 << "\n";
+                 << "-include(\"" << program_module_name << "_types.hrl\").\n\n";
 
   f_consts_hrl_file_ << erl_autogen_comment() << "\n" << erl_imports() << "\n"
                      << "-include(\"" << program_module_name << "_types.hrl\").\n\n";
@@ -297,8 +295,7 @@ void t_erl_generator::init_generator() {
  */
 void t_erl_generator::hrl_header(ostream& out, string name) {
   out << erl_autogen_comment() << "\n"
-      << "-ifndef(_" << name << "_included).\n-define(_" << name << "_included, yeah)."
-      << "\n";
+      << "-ifndef(_" << name << "_included).\n-define(_" << name << "_included, yeah).\n";
 }
 
 void t_erl_generator::hrl_footer(ostream& out, string name) {

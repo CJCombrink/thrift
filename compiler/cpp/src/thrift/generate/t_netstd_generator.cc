@@ -1230,12 +1230,10 @@ void t_netstd_generator::generate_netstd_struct_reader(ostream& out, t_struct* t
         << indent() << "break;\n";
     indent_down();
     indent_down();
-    out << indent() << "}\n"
-        << "\n"
+    out << indent() << "}\n\n"
         << indent() << "await iprot.ReadFieldEndAsync(" << CANCELLATION_TOKEN_NAME << ");\n";
     indent_down();
-    out << indent() << "}\n"
-        << "\n"
+    out << indent() << "}\n\n"
         << indent() << "await iprot.ReadStructEndAsync(" << CANCELLATION_TOKEN_NAME << ");\n";
 
     for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter)
@@ -1735,8 +1733,7 @@ void t_netstd_generator::generate_netstd_union_class(ostream& out, t_struct* tun
     indent_down();
     out << indent() << "}\n";
     indent_down();
-    out << indent() << "}\n"
-        << "\n";
+    out << indent() << "}\n\n";
 
 
     out << indent() << "public class " << normalize_name(tfield->get_name()) << " : " << normalize_name(tunion->get_name()) << "\n";
@@ -2071,12 +2068,10 @@ void t_netstd_generator::generate_service_client(ostream& out, t_service* tservi
 
     out << indent() << "public Client(TProtocol protocol) : this(protocol, protocol)\n"
         << indent() << "{\n"
-        << indent() << "}\n"
-        << "\n"
+        << indent() << "}\n\n"
         << indent() << "public Client(TProtocol inputProtocol, TProtocol outputProtocol) : base(inputProtocol, outputProtocol)\n"
         << indent() << "{\n"
-        << indent() << "}\n"
-        << "\n";
+        << indent() << "}\n\n";
 
     vector<t_function*> functions = tservice->get_functions();
     vector<t_function*>::const_iterator functions_iterator;
@@ -2171,8 +2166,7 @@ void t_netstd_generator::generate_service_client(ostream& out, t_service* tservi
             indent_down();
 
             tmpvar = tmp("tmp");
-            out << indent() << "}\n"
-                << "\n"
+            out << indent() << "}\n\n"
                 << indent() << "var " << tmpvar << " = new InternalStructs." << resultname << "();\n"
                 << indent() << "await " << tmpvar << ".ReadAsync(InputProtocol, " << CANCELLATION_TOKEN_NAME << ");\n"
                 << indent() << "await InputProtocol.ReadMessageEndAsync(" << CANCELLATION_TOKEN_NAME << ");\n";
@@ -2239,8 +2233,7 @@ void t_netstd_generator::generate_service_server(ostream& out, t_service* tservi
     indent_up();
 
     out << indent() << "private readonly IAsync _iAsync;\n"
-        << indent() << "private readonly ILogger<AsyncProcessor>" << nullable_suffix() << " _logger;\n"
-        << "\n"
+        << indent() << "private readonly ILogger<AsyncProcessor>" << nullable_suffix() << " _logger;\n\n"
         << indent() << "public AsyncProcessor(IAsync iAsync, ILogger<AsyncProcessor>" << nullable_suffix() << " logger = default)";
 
     if (!extends.empty())
@@ -2261,8 +2254,7 @@ void t_netstd_generator::generate_service_server(ostream& out, t_service* tservi
     }
 
     indent_down();
-    out << indent() << "}\n"
-        << "\n";
+    out << indent() << "}\n\n";
 
     if (extends.empty())
     {
@@ -2311,10 +2303,8 @@ void t_netstd_generator::generate_service_server(ostream& out, t_service* tservi
     out << indent() << "try\n"
         << indent() << "{\n";
     indent_up();
-    out << indent() << "var msg = await iprot.ReadMessageBeginAsync(" << CANCELLATION_TOKEN_NAME << ");\n"
-        << "\n"
-        << indent() << "processMap_.TryGetValue(msg.Name, out var fn);\n"
-        << "\n"
+    out << indent() << "var msg = await iprot.ReadMessageBeginAsync(" << CANCELLATION_TOKEN_NAME << ");\n\n"
+        << indent() << "processMap_.TryGetValue(msg.Name, out var fn);\n\n"
         << indent() << "if (fn == null)\n"
         << indent() << "{\n";
     indent_up();
@@ -2327,10 +2317,8 @@ void t_netstd_generator::generate_service_server(ostream& out, t_service* tservi
         << indent() << "await oprot.Transport.FlushAsync(" << CANCELLATION_TOKEN_NAME << ");\n"
         << indent() << "return true;\n";
     indent_down();
-    out << indent() << "}\n"
-        << "\n"
-        << indent() << "await fn(msg.SeqID, iprot, oprot, " << CANCELLATION_TOKEN_NAME << ");\n"
-        << "\n";
+    out << indent() << "}\n\n"
+        << indent() << "await fn(msg.SeqID, iprot, oprot, " << CANCELLATION_TOKEN_NAME << ");\n\n";
     indent_down();
     out << indent() << "}\n";
     out << indent() << "catch (IOException)\n"
@@ -2338,8 +2326,7 @@ void t_netstd_generator::generate_service_server(ostream& out, t_service* tservi
     indent_up();
     out << indent() << "return false;\n";
     indent_down();
-    out << indent() << "}\n"
-        << "\n"
+    out << indent() << "}\n\n"
         << indent() << "return true;\n";
     indent_down();
     out << indent() << "}\n\n";
@@ -2583,8 +2570,7 @@ void t_netstd_generator::generate_netstd_union_reader(ostream& out, t_struct* tu
         out << indent() << tmpRetval << " = new " << (*f_iter)->get_name() << "(" << tmpvar << ");\n";
 
         indent_down();
-        out << indent() << "} else { \n" << indent() << " await TProtocolUtil.SkipAsync(iprot, field.Type, " << CANCELLATION_TOKEN_NAME << ");"
-            << "\n" << indent() << "  " << tmpRetval << " = new ___undefined();\n" << indent() << "}\n"
+        out << indent() << "} else { \n" << indent() << " await TProtocolUtil.SkipAsync(iprot, field.Type, " << CANCELLATION_TOKEN_NAME << ");\n" << indent() << "  " << tmpRetval << " = new ___undefined();\n" << indent() << "}\n"
             << indent() << "break;\n";
         indent_down();
     }
@@ -2934,8 +2920,7 @@ void t_netstd_generator::generate_serialize_container(ostream& out, t_type* ttyp
     else if (ttype->is_list())
     {
         out << indent() << "await oprot.WriteListBeginAsync(new TList("
-            << type_to_enum(static_cast<t_list*>(ttype)->get_elem_type()) << ", " << prefix << ".Count), " << CANCELLATION_TOKEN_NAME << ");"
-            << "\n";
+            << type_to_enum(static_cast<t_list*>(ttype)->get_elem_type()) << ", " << prefix << ".Count), " << CANCELLATION_TOKEN_NAME << ");\n";
     }
 
     string iter = tmp("_iter");

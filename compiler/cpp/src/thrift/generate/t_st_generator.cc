@@ -253,8 +253,7 @@ void t_st_generator::generate_typedef(t_typedef* ttypedef) {
 void t_st_generator::st_class_def(std::ostream& out, string name) {
   out << "Object subclass: #" << prefix(name) << "\n";
   indent_up();
-  out << indent() << "instanceVariableNames: ''\n" << indent() << "classVariableNames: ''"
-      << "\n" << indent() << "poolDictionaries: ''\n" << indent() << "category: '"
+  out << indent() << "instanceVariableNames: ''\n" << indent() << "classVariableNames: ''\n" << indent() << "poolDictionaries: ''\n" << indent() << "category: '"
       << generated_category() << "'!\n\n";
 }
 
@@ -581,8 +580,7 @@ string t_st_generator::map_writer(t_map* tmap, string fname) {
   string val = temp_name();
 
   out << "[oprot writeMapBegin: (TMap new keyType: " << type_to_enum(tmap->get_key_type())
-      << "; valueType: " << type_to_enum(tmap->get_val_type()) << "; size: " << fname << " size)."
-      << "\n";
+      << "; valueType: " << type_to_enum(tmap->get_val_type()) << "; size: " << fname << " size).\n";
   indent_up();
 
   out << indent() << fname << " keysAndValuesDo: [:" << key << " :" << val << " |\n";
@@ -689,8 +687,7 @@ string t_st_generator::set_reader(t_set* tset) {
   out << "[|" << desc << " " << val << "| " << desc << " := iprot readSetBegin.\n";
   indent_up();
 
-  out << indent() << val << " := Set new.\n" << indent() << desc << " size timesRepeat: ["
-      << "\n";
+  out << indent() << val << " := Set new.\n" << indent() << desc << " size timesRepeat: [\n";
 
   indent_up();
   out << indent() << val << " add: " << read_val(tset->get_elem_type());
@@ -852,8 +849,7 @@ void t_st_generator::generate_send_method(t_function* function) {
   f_ << indent() << "(TCallMessage new\n";
   indent_up();
 
-  f_ << indent() << "name: '" << funname << "'; \n" << indent() << "seqid: self nextSeqid)."
-     << "\n";
+  f_ << indent() << "name: '" << funname << "'; \n" << indent() << "seqid: self nextSeqid).\n";
   indent_down();
   indent_down();
 
@@ -898,8 +894,7 @@ void t_st_generator::generate_recv_method(t_function* function) {
   st_method(f_, client_class_name(), "recv" + capitalize(funname));
   f_ << "| f msg res | \n" << indent() << "msg := oprot readMessageBegin.\n" << indent()
      << "self validateRemoteMessage: msg.\n" << indent()
-     << "res := " << struct_reader(&result) << ".\n" << indent() << "oprot readMessageEnd."
-     << "\n" << indent() << "oprot transport flush.\n" << indent()
+     << "res := " << struct_reader(&result) << ".\n" << indent() << "oprot readMessageEnd.\n" << indent() << "oprot transport flush.\n" << indent()
      << "res exception ifNotNil: [res exception signal].\n" << indent() << "^ res";
   st_close_method(f_);
 }

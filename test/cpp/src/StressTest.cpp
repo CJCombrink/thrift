@@ -295,8 +295,7 @@ int main(int argc, char** argv) {
         << "\treplay-request Replay requests from log file (./requestlog.tlog) Default is " << replayRequests << "\n"
         << "\tworkers        Number of thread pools workers.  Only valid "
                             "for thread-pool server type.  Default is " << workerCount << "\n"
-        << "\tclient-type    Type of client, \"regular\" or \"concurrent\".  Default is " << clientType << "\n"
-        << "\n";
+        << "\tclient-type    Type of client, \"regular\" or \"concurrent\".  Default is " << clientType << "\n\n";
 
   map<string, string> args;
 

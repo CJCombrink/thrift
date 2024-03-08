@@ -359,14 +359,12 @@ void t_html_generator::generate_css_content(std::ostream& f_target) {
   f_target << BOOTSTRAP_CSS() << "\n";
   f_target << "/* Auto-generated CSS for generated Thrift docs */\n";
   f_target << "h3, h4 { margin-bottom: 6px; }\n";
-  f_target << "div.definition { border: 1px solid #CCC; margin-bottom: 10px; padding: 10px; }"
-           << "\n";
+  f_target << "div.definition { border: 1px solid #CCC; margin-bottom: 10px; padding: 10px; }\n";
   f_target << "div.extends { margin: -0.5em 0 1em 5em }\n";
   f_target << "td { vertical-align: top; }\n";
   f_target << "table { empty-cells: show; }\n";
   f_target << "code { line-height: 20px; }\n";
-  f_target << ".table-bordered th, .table-bordered td { border-bottom: 1px solid #DDDDDD; }"
-           << "\n";
+  f_target << ".table-bordered th, .table-bordered td { border-bottom: 1px solid #DDDDDD; }\n";
 }
 
 /**

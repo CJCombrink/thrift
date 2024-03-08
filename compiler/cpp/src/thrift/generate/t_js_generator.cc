@@ -943,8 +943,7 @@ void t_js_generator::generate_js_struct_definition(ostream& out,
       if (t->is_xception()) {
         out << indent() << "if (args instanceof " << js_type_namespace(t->get_program())
             << t->get_name() << ") {\n" << indent() << indent() << "this."
-            << (*m_iter)->get_name() << " = args;\n" << indent() << indent() << "return;"
-            << "\n" << indent() << "}\n";
+            << (*m_iter)->get_name() << " = args;\n" << indent() << indent() << "return;\n" << indent() << "}\n";
       }
     }
 
@@ -1037,8 +1036,7 @@ void t_js_generator::generate_js_struct_definition(ostream& out,
           << tstruct->get_name() << "';\n";
     } else {
       // init prototype manually if we aren't using es6
-      out << js_namespace(tstruct->get_program()) << tstruct->get_name() << ".prototype = {};"
-          << "\n";
+      out << js_namespace(tstruct->get_program()) << tstruct->get_name() << ".prototype = {};\n";
     }
 
   }
@@ -1179,8 +1177,7 @@ void t_js_generator::generate_js_struct_writer(ostream& out, t_struct* tstruct) 
     indent(out) << "}\n";
   }
 
-  out << indent() << "output.writeFieldStop();\n" << indent() << "output.writeStructEnd();"
-      << "\n";
+  out << indent() << "output.writeFieldStop();\n" << indent() << "output.writeStructEnd();\n";
 
   out << indent() << "return;\n";
 
@@ -1389,13 +1386,11 @@ void t_js_generator::generate_service_processor(t_service* tservice) {
   indent(f_service_) << js_const_type_ << "r = input.readMessageBegin();\n" << indent()
              << "if (this['process_' + r.fname]) {\n" << indent()
              << "  return this['process_' + r.fname].call(this, r.rseqid, input, output);\n"
-             << indent() << "} else {\n" << indent() << "  input.skip(Thrift.Type.STRUCT);"
-             << "\n" << indent() << "  input.readMessageEnd();\n" << indent()
+             << indent() << "} else {\n" << indent() << "  input.skip(Thrift.Type.STRUCT);\n" << indent() << "  input.readMessageEnd();\n" << indent()
              << "  " << js_const_type_ << "x = new "
                 "Thrift.TApplicationException(Thrift.TApplicationExceptionType.UNKNOWN_METHOD, "
                 "'Unknown function ' + r.fname);\n" << indent()
-             << "  output.writeMessageBegin(r.fname, Thrift.MessageType.EXCEPTION, r.rseqid);"
-             << "\n" << indent() << "  x.write(output);\n" << indent()
+             << "  output.writeMessageBegin(r.fname, Thrift.MessageType.EXCEPTION, r.rseqid);\n" << indent() << "  x.write(output);\n" << indent()
              << "  output.writeMessageEnd();\n" << indent() << "  output.flush();\n"
              << indent() << "}\n";
 
@@ -1763,12 +1758,10 @@ void t_js_generator::generate_service_client(t_service* tservice) {
       if(!is_subclass_service) {
         f_service_ts_ << ts_indent() << "private output: thrift.TTransport;\n"
                       << ts_indent() << "private pClass: thrift.TProtocol;\n"
-                      << ts_indent() << "private _seqid: number;\n"
-                      << "\n";
+                      << ts_indent() << "private _seqid: number;\n\n";
       }
 
-      f_service_ts_ << ts_indent() << "constructor(output: thrift.TTransport, pClass: { new(trans: thrift.TTransport): thrift.TProtocol });"
-                    << "\n";
+      f_service_ts_ << ts_indent() << "constructor(output: thrift.TTransport, pClass: { new(trans: thrift.TTransport): thrift.TProtocol });\n";
     }
   } else {
     indent(f_service_) << "this.input = input;\n";
@@ -1778,8 +1771,7 @@ void t_js_generator::generate_service_client(t_service* tservice) {
       f_service_ts_ << ts_indent() << "input: Thrift.TJSONProtocol;\n" << ts_indent()
                     << "output: Thrift.TJSONProtocol;\n" << ts_indent() << "seqid: number;"
                     << "\n\n" << ts_indent()
-                    << "constructor(input: Thrift.TJSONProtocol, output?: Thrift.TJSONProtocol);"
-                    << "\n";
+                    << "constructor(input: Thrift.TJSONProtocol, output?: Thrift.TJSONProtocol);\n";
     }
   }
 
@@ -1810,8 +1802,7 @@ void t_js_generator::generate_service_client(t_service* tservice) {
       indent(f_service_) << js_namespace(tservice->get_program()) << service_name_
                         << "Client.prototype.seqid = function() { return this._seqid; };\n"
                         << js_namespace(tservice->get_program()) << service_name_
-                        << "Client.prototype.new_seqid = function() { return this._seqid += 1; };"
-                        << "\n";
+                        << "Client.prototype.new_seqid = function() { return this._seqid += 1; };\n";
     }
   }
 

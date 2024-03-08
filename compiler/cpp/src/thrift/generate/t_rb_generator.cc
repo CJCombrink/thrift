@@ -799,8 +799,7 @@ void t_rb_generator::generate_service(t_service* tservice) {
     }
   }
 
-  f_service_ << "require '" << require_prefix_ << underscore(program_name_) << "_types'\n"
-             << "\n";
+  f_service_ << "require '" << require_prefix_ << underscore(program_name_) << "_types'\n\n";
 
   begin_namespace(f_service_, ruby_modules(tservice->get_program()));
 
@@ -1092,8 +1091,7 @@ void t_rb_generator::generate_process_function(t_service* tservice, t_function* 
     return;
   }
 
-  f_service_.indent() << "write_result(result, oprot, '" << tfunction->get_name() << "', seqid)"
-                      << "\n";
+  f_service_.indent() << "write_result(result, oprot, '" << tfunction->get_name() << "', seqid)\n";
 
   // Close function
   f_service_.indent_down();
@@ -1266,8 +1264,7 @@ void t_rb_generator::generate_rb_union_validator(t_rb_ofstream& out, t_struct* t
   vector<t_field*>::const_iterator f_iter;
 
   out.indent()
-      << "raise(StandardError, 'Union fields are not set.') if get_set_field.nil? || get_value.nil?"
-      << "\n";
+      << "raise(StandardError, 'Union fields are not set.') if get_set_field.nil? || get_value.nil?\n";
 
   // if field is an enum, check that its value is valid
   for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
@@ -1278,8 +1275,7 @@ void t_rb_generator::generate_rb_union_validator(t_rb_ofstream& out, t_struct* t
       out.indent() << "  raise "
                       "::Thrift::ProtocolException.new(::Thrift::ProtocolException::UNKNOWN, "
                       "'Invalid value of field " << field->get_name() << "!') unless "
-                   << full_type_name(field->get_type()) << "::VALID_VALUES.include?(get_value)"
-                   << "\n";
+                   << full_type_name(field->get_type()) << "::VALID_VALUES.include?(get_value)\n";
       out.indent() << "end\n";
     }
   }

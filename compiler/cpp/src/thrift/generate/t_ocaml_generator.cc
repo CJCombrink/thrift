@@ -288,10 +288,8 @@ void t_ocaml_generator::generate_typedef(t_typedef* ttypedef) {
  * @param tenum The enumeration
  */
 void t_ocaml_generator::generate_enum(t_enum* tenum) {
-  indent(f_types_) << "module " << capitalize(tenum->get_name()) << " = \nstruct"
-                   << "\n";
-  indent(f_types_i_) << "module " << capitalize(tenum->get_name()) << " : \nsig"
-                     << "\n";
+  indent(f_types_) << "module " << capitalize(tenum->get_name()) << " = \nstruct\n";
+  indent(f_types_i_) << "module " << capitalize(tenum->get_name()) << " : \nsig\n";
   indent_up();
   indent(f_types_) << "type t = \n";
   indent(f_types_i_) << "type t = \n";
@@ -1040,8 +1038,7 @@ void t_ocaml_generator::generate_service_client(t_service* tservice) {
 
     // Serialize the request header
     f_service_ << indent() << "oprot#writeMessageBegin (\"" << (*f_iter)->get_name() << "\", "
-               << ((*f_iter)->is_oneway() ? "Protocol.ONEWAY" : "Protocol.CALL") << ", seqid);"
-               << "\n";
+               << ((*f_iter)->is_oneway() ? "Protocol.ONEWAY" : "Protocol.CALL") << ", seqid);\n";
 
     f_service_ << indent() << "let args = new " << argsname << " in\n";
     indent_up();
@@ -1052,8 +1049,7 @@ void t_ocaml_generator::generate_service_client(t_service* tservice) {
     }
 
     // Write to the stream
-    f_service_ << indent() << "args#write oprot;\n" << indent() << "oprot#writeMessageEnd;"
-               << "\n" << indent() << "oprot#getTransport#flush\n";
+    f_service_ << indent() << "args#write oprot;\n" << indent() << "oprot#writeMessageEnd;\n" << indent() << "oprot#getTransport#flush\n";
 
     indent_down();
     indent_down();
@@ -1066,8 +1062,7 @@ void t_ocaml_generator::generate_service_client(t_service* tservice) {
                                string("recv_") + (*f_iter)->get_name(),
                                &noargs);
       // Open function
-      f_service_ << indent() << "method private " << function_signature(&recv_function) << " ="
-                 << "\n";
+      f_service_ << indent() << "method private " << function_signature(&recv_function) << " =\n";
       indent_up();
 
       // TODO(mcslee): Validate message reply here, seq ids etc.
@@ -1141,8 +1136,7 @@ void t_ocaml_generator::generate_service_server(t_service* tservice) {
   vector<t_function*>::iterator f_iter;
 
   // Generate the header portion
-  indent(f_service_) << "class processor (handler : iface) =\n" << indent() << "object (self)"
-                     << "\n";
+  indent(f_service_) << "class processor (handler : iface) =\n" << indent() << "object (self)\n";
   indent(f_service_i_) << "class processor : iface ->\n" << indent() << "object\n";
   indent_up();
 
@@ -1152,8 +1146,7 @@ void t_ocaml_generator::generate_service_server(t_service* tservice) {
 
   if (tservice->get_extends() != nullptr) {
     extends = type_name(tservice->get_extends());
-    indent(f_service_) << "inherit " + extends + ".processor (handler :> " + extends + ".iface)"
-                       << "\n";
+    indent(f_service_) << "inherit " + extends + ".processor (handler :> " + extends + ".iface)\n";
     indent(f_service_i_) << "inherit " + extends + ".processor\n";
   }
 
@@ -1399,8 +1392,7 @@ void t_ocaml_generator::generate_deserialize_container(ostream& out, t_type* tty
   indent_up();
   // Declare variables, read header
   if (ttype->is_map()) {
-    indent(out) << "(let (" << ktype << "," << vtype << "," << size << ") = iprot#readMapBegin in"
-                << "\n";
+    indent(out) << "(let (" << ktype << "," << vtype << "," << size << ") = iprot#readMapBegin in\n";
     indent(out) << "let " << con << " = Hashtbl.create " << size << " in\n";
     indent_up();
     indent(out) << "for i = 1 to " << size << " do\n";
