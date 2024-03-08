@@ -1967,8 +1967,7 @@ void t_cpp_generator::generate_service(t_service* tservice) {
     f_service_tcc_ << autogen_comment();
     f_service_tcc_ << "#include \"" << get_include_prefix(*get_program()) << svcname << ".h\"\n";
 
-    f_service_tcc_ << "#ifndef " << svcname << "_TCC\n#define " << svcname << "_TCC"
-                   << "\n\n";
+    f_service_tcc_ << "#ifndef " << svcname << "_TCC\n#define " << svcname << "_TCC\n\n";
 
     if (gen_cob_style_) {
       f_service_tcc_ << "#include \"thrift/async/TAsyncChannel.h\"\n";
@@ -3783,8 +3782,7 @@ void t_cpp_generator::generate_process_function(t_service* tservice,
         out << indent() << "Protocol_* _oprot = dynamic_cast<Protocol_*>(oprot);\n"
             << indent() << "if (_oprot) {\n" << indent() << "  return return_"
             << tfunction->get_name() << "(cob, seqid, _oprot, ctx" << ret_arg_name << ");\n"
-            << indent() << "}\n" << indent() << "T_GENERIC_PROTOCOL(this, oprot, _oprot);"
-            << "\n\n";
+            << indent() << "}\n" << indent() << "T_GENERIC_PROTOCOL(this, oprot, _oprot);\n\n";
       }
 
       out << indent() << tservice->get_name() << "_" << tfunction->get_name() << "_presult result;\n";

@@ -672,8 +672,7 @@ void t_netstd_generator::generate_extensions(ostream& out, map<string, t_type*> 
 
     reset_indent();
     out << autogen_comment() << netstd_type_usings()
-        << "using Thrift.Protocol;\n"
-        << "\n\n";
+        << "using Thrift.Protocol;\n\n\n";
 
     pragmas_and_directives(out);
     start_netstd_namespace(out);

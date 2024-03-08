@@ -907,8 +907,7 @@ void t_erl_generator::generate_service(t_service* tservice) {
                    << "_thrift.hrl\"). % inherit \n";
   }
 
-  f_service_hrl_ << "-include(\"" << make_safe_for_module_name(program_name_) << "_types.hrl\")."
-                 << "\n\n";
+  f_service_hrl_ << "-include(\"" << make_safe_for_module_name(program_name_) << "_types.hrl\").\n\n";
 
   // Generate the three main parts of the service (well, two for now in PHP)
   generate_service_helpers(tservice); // cpiro: New Erlang Order

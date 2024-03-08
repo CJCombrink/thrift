@@ -1751,8 +1751,7 @@ void t_haxe_generator::generate_service_interface(t_service* tservice, bool comb
   generate_haxe_doc(f_service_, tservice);
   generate_rtti_decoration(f_service_);
   generate_macro_decoration(f_service_);
-  f_service_ << indent() << "interface " << get_cap_name(service_name_) << cbk_postfix << extends_iface << " {"
-             << "\n\n";
+  f_service_ << indent() << "interface " << get_cap_name(service_name_) << cbk_postfix << extends_iface << " {\n\n";
   indent_up();
   for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
     generate_haxe_doc(f_service_, *f_iter);

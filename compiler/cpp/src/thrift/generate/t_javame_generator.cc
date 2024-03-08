@@ -1866,8 +1866,7 @@ void t_javame_generator::generate_service(t_service* tservice) {
  * @param tservice The service to generate a header definition for
  */
 void t_javame_generator::generate_primitive_service_interface(t_service* tservice) {
-  f_service_ << indent() << "public interface Iface extends " << service_name_ << "Iface { }"
-             << "\n\n";
+  f_service_ << indent() << "public interface Iface extends " << service_name_ << "Iface { }\n\n";
 
   string f_interface_name = package_dir_ + "/" + service_name_ + "Iface.java";
   ofstream_with_content_based_conditional_update f_iface;

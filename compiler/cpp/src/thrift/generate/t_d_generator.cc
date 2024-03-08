@@ -210,8 +210,7 @@ protected:
     string f_servicename = package_dir_ + svc_name + ".d";
     ofstream_with_content_based_conditional_update f_service;
     f_service.open(f_servicename.c_str());
-    f_service << autogen_comment() << "module " << suffix_if_reserved(render_package(*program_)) << svc_name << ";"
-              << "\n\n";
+    f_service << autogen_comment() << "module " << suffix_if_reserved(render_package(*program_)) << svc_name << ";\n\n";
 
     print_default_imports(f_service);
 

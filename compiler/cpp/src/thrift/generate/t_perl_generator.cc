@@ -949,8 +949,7 @@ void t_perl_generator::generate_service_interface(t_service* tservice) {
   vector<t_function*> functions = tservice->get_functions();
   vector<t_function*>::iterator f_iter;
   for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
-    f_service_ << "sub " << function_signature(*f_iter) << "\n  die 'implement interface';\n}"
-               << "\n\n";
+    f_service_ << "sub " << function_signature(*f_iter) << "\n  die 'implement interface';\n}\n\n";
   }
   indent_down();
 }

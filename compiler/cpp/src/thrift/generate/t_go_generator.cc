@@ -1396,8 +1396,7 @@ void t_go_generator::generate_go_struct_definition(ostream& out,
     indent_down();
     out << indent() << "}\n\n";
 
-    out << indent() << "var _ thrift.TException = (*" << tstruct_name << ")(nil)"
-        << "\n\n";
+    out << indent() << "var _ thrift.TException = (*" << tstruct_name << ")(nil)\n\n";
   }
 
   if (!read_write_private_) {
@@ -1420,8 +1419,7 @@ void t_go_generator::generate_go_struct_definition(ostream& out,
     indent_down();
     out << indent() << "}\n\n";
 
-    out << indent() << "var _ slog.LogValuer = (*" << tstruct_name << ")(nil)"
-        << "\n\n";
+    out << indent() << "var _ slog.LogValuer = (*" << tstruct_name << ")(nil)\n\n";
   }
 }
 

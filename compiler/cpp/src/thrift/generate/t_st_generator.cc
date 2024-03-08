@@ -314,8 +314,7 @@ void t_st_generator::st_accessors(std::ostream& out,
 }
 
 void t_st_generator::generate_class_side_definition() {
-  f_ << prefix(class_name()) << " class\n\tinstanceVariableNames: 'constants enums'!"
-     << "\n\n";
+  f_ << prefix(class_name()) << " class\n\tinstanceVariableNames: 'constants enums'!\n\n";
 
   st_accessors(f_, class_name() + " class", "enums");
   st_accessors(f_, class_name() + " class", "constants");

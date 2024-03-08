@@ -1398,8 +1398,7 @@ void t_c_glib_generator::generate_service_client(t_service* tservice) {
             << "_CLIENT))\n#define " << this->nspace_uc << service_name_uc
             << "_CLIENT_GET_CLASS(obj) "
             << "(G_TYPE_INSTANCE_GET_CLASS ((obj), " << this->nspace_uc << "TYPE_"
-            << service_name_uc << "_CLIENT, " << this->nspace << service_name_ << "ClientClass))"
-            << "\n\n";
+            << service_name_uc << "_CLIENT, " << this->nspace << service_name_ << "ClientClass))\n\n";
 
   /* write out the function prototypes */
   for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
@@ -1565,8 +1564,7 @@ void t_c_glib_generator::generate_service_client(t_service* tservice) {
                << "ThriftProtocol * protocol = " << this->nspace_uc << base_service_name_uc
                << "_CLIENT (iface)->output_protocol;\n\n" << indent()
                << "if (thrift_protocol_write_message_begin (protocol, \"" << name << "\", "
-               << reqType << ", cseqid, error) < 0)\n" << indent() << "  return FALSE;"
-               << "\n\n";
+               << reqType << ", cseqid, error) < 0)\n" << indent() << "  return FALSE;\n\n";
 
     generate_struct_writer(f_service_, arg_struct, "", "", false);
 
@@ -1930,8 +1928,7 @@ void t_c_glib_generator::generate_service_handler(t_service* tservice) {
 
   // Generate the implementation boilerplate
   f_service_ << "static void\n" << class_name_lc << "_" << service_name_lc
-             << "_if_interface_init (" << this->nspace << service_name_ << "IfInterface *iface);"
-             << "\n\n";
+             << "_if_interface_init (" << this->nspace << service_name_ << "IfInterface *iface);\n\n";
 
   args_indent = string(25, ' ');
   f_service_ << "G_DEFINE_TYPE_WITH_CODE (" << class_name << ", \n" << args_indent
@@ -1939,8 +1936,7 @@ void t_c_glib_generator::generate_service_handler(t_service* tservice) {
              << args_indent << "G_IMPLEMENT_INTERFACE (" << this->nspace_uc << "TYPE_"
              << service_name_uc << "_IF,\n";
   args_indent += string(23, ' ');
-  f_service_ << args_indent << class_name_lc << "_" << service_name_lc << "_if_interface_init))"
-             << "\n\n";
+  f_service_ << args_indent << class_name_lc << "_" << service_name_lc << "_if_interface_init))\n\n";
 
   // Generate the handler method implementations
   for (function_iter = functions.begin(); function_iter != functions.end(); ++function_iter) {

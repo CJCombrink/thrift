@@ -265,8 +265,7 @@ void t_cl_generator::generate_const(t_const* tconst) {
   string name = tconst->get_name();
   t_const_value* value = tconst->get_value();
 
-  f_vars_ << "(thrift:def-constant " << prefix(name) << " " << render_const_value(type, value) << ")"
-          << "\n\n";
+  f_vars_ << "(thrift:def-constant " << prefix(name) << " " << render_const_value(type, value) << ")\n\n";
 }
 
 /**
