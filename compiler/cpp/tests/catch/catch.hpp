@@ -5819,15 +5819,15 @@ namespace Catch {
                 : Colour::None;
             Colour colourGuard( colour );
 
-            Catch::cout() << Text( testCaseInfo.name, nameAttr ) << std::endl;
+            Catch::cout() << Text( testCaseInfo.name, nameAttr ) << "\n";
             if( !testCaseInfo.tags.empty() )
-                Catch::cout() << Text( testCaseInfo.tagsAsString, tagsAttr ) << std::endl;
+                Catch::cout() << Text( testCaseInfo.tagsAsString, tagsAttr ) << "\n";
         }
 
         if( !config.testSpec().hasFilters() )
-            Catch::cout() << pluralise( matchedTests, "test case" ) << '\n' << std::endl;
+            Catch::cout() << pluralise( matchedTests, "test case" ) << '\n' << "\n";
         else
-            Catch::cout() << pluralise( matchedTests, "matching test case" ) << '\n' << std::endl;
+            Catch::cout() << pluralise( matchedTests, "matching test case" ) << '\n' << "\n";
         return matchedTests;
     }
 
@@ -5843,9 +5843,9 @@ namespace Catch {
             matchedTests++;
             TestCaseInfo const& testCaseInfo = it->getTestCaseInfo();
             if( startsWith( testCaseInfo.name, '#' ) )
-               Catch::cout() << '"' << testCaseInfo.name << '"' << std::endl;
+               Catch::cout() << '"' << testCaseInfo.name << '"' << "\n";
             else
-               Catch::cout() << testCaseInfo.name << std::endl;
+               Catch::cout() << testCaseInfo.name << "\n";
         }
         return matchedTests;
     }
@@ -5908,7 +5908,7 @@ namespace Catch {
                                                     .setWidth( CATCH_CONFIG_CONSOLE_WIDTH-10 ) );
             Catch::cout() << oss.str() << wrapper << '\n';
         }
-        Catch::cout() << pluralise( tagCounts.size(), "tag" ) << '\n' << std::endl;
+        Catch::cout() << pluralise( tagCounts.size(), "tag" ) << '\n' << "\n";
         return tagCounts.size();
     }
 
@@ -5931,7 +5931,7 @@ namespace Catch {
                     << std::string( maxNameLen - it->first.size() + 2, ' ' )
                     << wrapper << '\n';
         }
-        Catch::cout() << std::endl;
+        Catch::cout() << "\n";
         return factories.size();
     }
 
@@ -7002,7 +7002,7 @@ namespace Catch {
         : m_cli( makeCommandLineParser() ) {
             if( alreadyInstantiated ) {
                 std::string msg = "Only one instance of Catch::Session can ever be used";
-                Catch::cerr() << msg << std::endl;
+                Catch::cerr() << msg << "\n";
                 throw std::logic_error( msg );
             }
             alreadyInstantiated = true;
@@ -7015,7 +7015,7 @@ namespace Catch {
             Catch::cout() << "\nCatch v" << libraryVersion() << "\n";
 
             m_cli.usage( Catch::cout(), processName );
-            Catch::cout() << "For more detail usage please see the project docs\n" << std::endl;
+            Catch::cout() << "For more detail usage please see the project docs\n\n";
         }
 
         int applyCommandLine( int argc, char const* const* const argv, OnUnusedOptions::DoWhat unusedOptionBehaviour = OnUnusedOptions::Fail ) {
@@ -7099,7 +7099,7 @@ namespace Catch {
                 return static_cast<int>( runTests( m_config ).assertions.failed );
             }
             catch( std::exception& ex ) {
-                Catch::cerr() << ex.what() << std::endl;
+                Catch::cerr() << ex.what() << "\n";
                 return (std::numeric_limits<int>::max)();
             }
         }
@@ -7199,7 +7199,7 @@ namespace Catch {
                 ss  << Colour( Colour::Red )
                     << "error: TEST_CASE( \"" << it->name << "\" ) already defined.\n"
                     << "\tFirst seen at " << prev.first->getTestCaseInfo().lineInfo << '\n'
-                    << "\tRedefined at " << it->getTestCaseInfo().lineInfo << std::endl;
+                    << "\tRedefined at " << it->getTestCaseInfo().lineInfo << "\n";
 
                 throw std::runtime_error(ss.str());
             }
@@ -8719,7 +8719,7 @@ namespace Catch {
 
             size = sizeof(info);
             if( sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, CATCH_NULL, 0) != 0 ) {
-                Catch::cerr() << "\n** Call to sysctl failed - unable to determine if debugger is active **\n" << std::endl;
+                Catch::cerr() << "\n** Call to sysctl failed - unable to determine if debugger is active **\n\n";
                 return false;
             }
 
@@ -9946,7 +9946,7 @@ namespace Catch {
             else {
                 m_os << m_indent << "</" << m_tags.back() << ">";
             }
-            m_os << std::endl;
+            m_os << "\n";
             m_tags.pop_back();
             return *this;
         }
@@ -10000,7 +10000,7 @@ namespace Catch {
 
         void ensureTagClosed() {
             if( m_tagIsOpen ) {
-                m_os << ">" << std::endl;
+                m_os << ">\n";
                 m_tagIsOpen = false;
             }
         }
@@ -10015,7 +10015,7 @@ namespace Catch {
 
         void newlineIfNecessary() {
             if( m_needsNewline ) {
-                m_os << std::endl;
+                m_os << "\n";
                 m_needsNewline = false;
             }
         }
@@ -10518,7 +10518,7 @@ namespace Catch {
         }
 
         virtual void noMatchingTestCases( std::string const& spec ) CATCH_OVERRIDE {
-            stream << "No test cases matched '" << spec << '\'' << std::endl;
+            stream << "No test cases matched '" << spec << '\'' << "\n";
         }
 
         virtual void assertionStarting( AssertionInfo const& ) CATCH_OVERRIDE {
@@ -10537,7 +10537,7 @@ namespace Catch {
 
             AssertionPrinter printer( stream, _assertionStats, includeResults );
             printer.print();
-            stream << std::endl;
+            stream << "\n";
             return true;
         }
 
@@ -10553,10 +10553,10 @@ namespace Catch {
                     stream << "\nNo assertions in section";
                 else
                     stream << "\nNo assertions in test case";
-                stream << " '" << _sectionStats.sectionInfo.name << "'\n" << std::endl;
+                stream << " '" << _sectionStats.sectionInfo.name << "'\n\n";
             }
             if( m_config->showDurations() == ShowDurations::Always ) {
-                stream << getFormattedDuration(_sectionStats.durationInSeconds) << " s: " << _sectionStats.sectionInfo.name << std::endl;
+                stream << getFormattedDuration(_sectionStats.durationInSeconds) << " s: " << _sectionStats.sectionInfo.name << "\n";
             }
             if( m_headerPrinted ) {
                 m_headerPrinted = false;
@@ -10573,14 +10573,14 @@ namespace Catch {
                 printSummaryDivider();
                 stream << "Summary for group '" << _testGroupStats.groupInfo.name << "':\n";
                 printTotals( _testGroupStats.totals );
-                stream << '\n' << std::endl;
+                stream << '\n' << "\n";
             }
             StreamingReporterBase::testGroupEnded( _testGroupStats );
         }
         virtual void testRunEnded( TestRunStats const& _testRunStats ) CATCH_OVERRIDE {
             printTotalsDivider( _testRunStats.totals );
             printTotals( _testRunStats.totals );
-            stream << std::endl;
+            stream << "\n";
             StreamingReporterBase::testRunEnded( _testRunStats );
         }
 
@@ -10780,7 +10780,7 @@ namespace Catch {
                 Colour colourGuard( Colour::FileName );
                 stream << lineInfo << '\n';
             }
-            stream << getLineOfChars<'.'>() << '\n' << std::endl;
+            stream << getLineOfChars<'.'>() << '\n' << "\n";
         }
 
         void printClosedHeader( std::string const& _name ) {
@@ -10955,7 +10955,7 @@ namespace Catch {
         }
 
         virtual void noMatchingTestCases( std::string const& spec ) {
-            stream << "No test cases matched '" << spec << '\'' << std::endl;
+            stream << "No test cases matched '" << spec << '\'' << "\n";
         }
 
         virtual void assertionStarting( AssertionInfo const& ) {}
@@ -10975,19 +10975,19 @@ namespace Catch {
             AssertionPrinter printer( stream, _assertionStats, printInfoMessages );
             printer.print();
 
-            stream << std::endl;
+            stream << "\n";
             return true;
         }
 
         virtual void sectionEnded(SectionStats const& _sectionStats) CATCH_OVERRIDE {
             if (m_config->showDurations() == ShowDurations::Always) {
-                stream << getFormattedDuration(_sectionStats.durationInSeconds) << " s: " << _sectionStats.sectionInfo.name << std::endl;
+                stream << getFormattedDuration(_sectionStats.durationInSeconds) << " s: " << _sectionStats.sectionInfo.name << "\n";
             }
         }
 
         virtual void testRunEnded( TestRunStats const& _testRunStats ) {
             printTotals( _testRunStats.totals );
-            stream << '\n' << std::endl;
+            stream << '\n' << "\n";
             StreamingReporterBase::testRunEnded( _testRunStats );
         }
 

@@ -2950,7 +2950,7 @@ void t_cpp_generator::generate_service_client(t_service* tservice, string style)
           indent() << "  throw x;\n" <<
           indent() << "}\n" <<
           indent() << "if (mtype != ::apache::thrift::protocol::T_REPLY) {\n" <<
-          indent() << "  " << _this << "iprot_->skip(" << "::apache::thrift::protocol::T_STRUCT);\n" <<
+          indent() << "  " << _this << "iprot_->skip(::apache::thrift::protocol::T_STRUCT);\n" <<
           indent() << "  " << _this << "iprot_->readMessageEnd();\n" <<
           indent() << "  " << _this << "iprot_->getTransport()->readEnd();\n";
         if (style == "Cob" && !gen_no_client_completion_) {
@@ -2960,7 +2960,7 @@ void t_cpp_generator::generate_service_client(t_service* tservice, string style)
         out <<
           indent() << "}\n" <<
           indent() << "if (fname.compare(\"" << (*f_iter)->get_name() << "\") != 0) {\n" <<
-          indent() << "  " << _this << "iprot_->skip(" << "::apache::thrift::protocol::T_STRUCT);\n" <<
+          indent() << "  " << _this << "iprot_->skip(::apache::thrift::protocol::T_STRUCT);\n" <<
           indent() << "  " << _this << "iprot_->readMessageEnd();\n" <<
           indent() << "  " << _this << "iprot_->getTransport()->readEnd();\n";
         if (style == "Cob" && !gen_no_client_completion_) {

@@ -42,7 +42,6 @@ using std::stringstream;
 using std::vector;
 using std::stack;
 
-static const string endl = "\n";
 static const string quot = "\"";
 static const bool NO_INDENT = false;
 static const bool FORCE_STRING = true;
@@ -182,20 +181,20 @@ string t_json_generator::escape_json_string(const string& input) {
 }
 
 void t_json_generator::start_object(bool should_indent) {
-  f_json_ << (should_indent ? indent() : "") << "{" << endl;
+  f_json_ << (should_indent ? indent() : "") << "{\n";
   indent_up();
   comma_needed_.push(false);
 }
 
 void t_json_generator::start_array() {
-  f_json_ << "[" << endl;
+  f_json_ << "[\n";
   indent_up();
   comma_needed_.push(false);
 }
 
 void t_json_generator::write_comma_if_needed() {
   if (comma_needed_.top()) {
-    f_json_ << "," << endl;
+    f_json_ << ",\n";
   }
 }
 
@@ -230,14 +229,14 @@ void t_json_generator::write_key_and_bool(string key, bool val) {
 
 void t_json_generator::end_object() {
   indent_down();
-  f_json_ << endl << indent() << "}";
+  f_json_ << "\n" << indent() << "}";
   comma_needed_.pop();
 }
 
 void t_json_generator::end_array() {
   indent_down();
   if (comma_needed_.top()) {
-    f_json_ << endl;
+    f_json_ << "\n";
   }
   indent(f_json_) << "]";
   comma_needed_.pop();
@@ -296,7 +295,7 @@ void t_json_generator::write_type_spec(t_type* ttype) {
 }
 
 void t_json_generator::close_generator() {
-  f_json_ << endl;
+  f_json_ << "\n";
   f_json_.close();
 }
 

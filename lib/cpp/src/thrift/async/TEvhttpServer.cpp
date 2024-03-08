@@ -127,13 +127,13 @@ void TEvhttpServer::complete(RequestContext* ctx, bool success) {
   int rv = evhttp_add_header(ctx->req->output_headers, "Content-Type", "application/x-thrift");
   if (rv != 0) {
     // TODO: Log an error.
-    std::cerr << "evhttp_add_header failed " << __FILE__ << ":" << __LINE__ << std::endl;
+    std::cerr << "evhttp_add_header failed " << __FILE__ << ":" << __LINE__ << "\n";
   }
 
   struct evbuffer* buf = evbuffer_new();
   if (buf == nullptr) {
     // TODO: Log an error.
-    std::cerr << "evbuffer_new failed " << __FILE__ << ":" << __LINE__ << std::endl;
+    std::cerr << "evbuffer_new failed " << __FILE__ << ":" << __LINE__ << "\n";
   } else {
     uint8_t* obuf;
     uint32_t sz;
@@ -142,7 +142,7 @@ void TEvhttpServer::complete(RequestContext* ctx, bool success) {
     if (ret != 0) {
       // TODO: Log an error.
       std::cerr << "evhttp_add failed with " << ret << " " << __FILE__ << ":" << __LINE__
-                << std::endl;
+                << "\n";
     }
   }
 

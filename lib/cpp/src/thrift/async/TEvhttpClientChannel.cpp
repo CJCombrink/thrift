@@ -148,7 +148,7 @@ void TEvhttpClientChannel::finish(struct evhttp_request* req) {
   } catch (std::exception& e) {
     // don't propagate a C++ exception in C code (e.g. libevent)
     std::cerr << "TEvhttpClientChannel::response exception thrown (ignored): " << e.what()
-              << std::endl;
+              << "\n";
   }
 }
 }
