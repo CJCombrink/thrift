@@ -149,13 +149,15 @@ public:
                                    bool read = true,
                                    bool write = true,
                                    bool swap = false,
-                                   bool is_user_struct = false);
+                                   bool is_user_struct = false,
+                                   bool is_cpp17 = false);
   void generate_struct_definition(std::ostream& out,
                                   std::ostream& force_cpp_out,
                                   t_struct* tstruct,
                                   bool setters = true,
                                   bool is_user_struct = false,
-                                  bool pointers = false);
+                                  bool pointers = false,
+                                  bool is_cpp17 = false);
   void generate_copy_constructor(std::ostream& out, t_struct* tstruct, bool is_exception);
   void generate_move_constructor(std::ostream& out, t_struct* tstruct, bool is_exception);
   void generate_default_constructor(std::ostream& out, t_struct* tstruct, bool is_exception);
@@ -249,13 +251,17 @@ public:
   std::string namespace_prefix(std::string ns);
   static std::string namespace_open(std::string ns, bool cpp17);
   static std::string namespace_close(std::string ns, bool cpp17);
-  std::string type_name(t_type* ttype, bool in_typedef = false, bool arg = false);
+  std::string type_name(t_type* ttype,
+                        bool in_typedef = false,
+                        bool arg = false,
+                        bool is_cpp17 = false);
   std::string base_type_name(t_base_type::t_base tbase);
   std::string declare_field(t_field* tfield,
                             bool init = false,
                             bool pointer = false,
                             bool constant = false,
-                            bool reference = false);
+                            bool reference = false,
+                            bool is_cpp17 = false);
   std::string function_signature(t_function* tfunction,
                                  std::string style,
                                  std::string prefix = "",
@@ -502,6 +508,9 @@ void t_cpp_generator::init_generator() {
   f_types_cpp17_ << "#include <functional>" << '\n';
   f_types_cpp17_ << "#include <memory>" << '\n';
   f_types_cpp17_ << "#include <optional>" << '\n';
+  f_types_cpp17_ << "#include <string>" << '\n';
+  f_types_cpp17_ << "#include <map>" << '\n';
+  f_types_cpp17_ << "#include <set>" << '\n';
 
   // Include other Thrift includes
   const vector<t_program*>& includes = program_->get_includes();
@@ -669,7 +678,7 @@ void t_cpp_generator::generate_enum_constant_list(std::ostream& f,
 void t_cpp_generator::generate_enum_cpp17_constant_list(std::ostream& f,
                        const vector<t_enum_value*>& constants,
                        const std::string& prefix) {
-  f << " {" << endl;
+  f << " {" << '\n';
   indent_up();
   indent_up();
 
@@ -679,7 +688,7 @@ void t_cpp_generator::generate_enum_cpp17_constant_list(std::ostream& f,
   }
 
   indent_down();
-  indent(f) << "};" << endl;
+  indent(f) << "};" << '\n';
   indent_down();
 }
 
@@ -812,7 +821,7 @@ void t_cpp_generator::generate_enum_ostream_operator(std::ostream& out,
 
   out << indent() << "return out;" << '\n';
   scope_down(out);
-  out << "" << '\n';
+  out  << '\n';
 }
 
 void t_cpp_generator::generate_enum_to_string_helper_function_decl(std::ostream& out,
@@ -1046,6 +1055,7 @@ string t_cpp_generator::render_const_value(ostream& out,
 void t_cpp_generator::generate_forward_declaration(t_struct* tstruct) {
   // Forward declare struct def
   f_types_ << indent() << "class " << tstruct->get_name() << ";" << '\n' << '\n';
+  f_types_cpp17_ << indent() << "class " << tstruct->get_name() << ";" << '\n';
 }
 
 /**
@@ -1056,8 +1066,10 @@ void t_cpp_generator::generate_forward_declaration(t_struct* tstruct) {
  * @param tstruct The struct definition
  */
 void t_cpp_generator::generate_cpp_struct(t_struct* tstruct, bool is_exception) {
-  generate_struct_declaration(f_types_, tstruct, is_exception, false, true, true, true, true);
-  generate_struct_definition(f_types_impl_, f_types_impl_, tstruct, true, true, false);
+  generate_struct_declaration(f_types_, tstruct, is_exception, false, true, true, true, true, false);
+  generate_struct_declaration(f_types_cpp17_, tstruct, is_exception, false, true, true, true, true, true);
+  generate_struct_definition(f_types_impl_, f_types_impl_, tstruct, true, true, false, false);
+  generate_struct_definition(f_types_cpp17_impl_, f_types_cpp17_impl_, tstruct, true, true, false, true);
 
   std::ostream& out = (gen_templates_ ? f_types_tcc_ : f_types_impl_);
   generate_struct_reader(out, tstruct);
@@ -1343,9 +1355,12 @@ void t_cpp_generator::generate_struct_declaration(ostream& out,
                                                   bool read,
                                                   bool write,
                                                   bool swap,
-                                                  bool is_user_struct) {
+                                                  bool is_user_struct,
+                                                  bool is_cpp17) {
   string extends = "";
-  if (is_exception) {
+  if (is_cpp17) {
+    extends = std::string{};
+  } else if (is_exception) {
     extends = " : public ::apache::thrift::TException";
   } else {
     if (is_user_struct && !gen_templates_) {
@@ -1368,7 +1383,7 @@ void t_cpp_generator::generate_struct_declaration(ostream& out,
       has_nonrequired_fields = true;
   }
 
-  if (has_nonrequired_fields && (!pointers || read)) {
+  if (!is_cpp17 && has_nonrequired_fields && (!pointers || read)) {
 
     out << indent() << "typedef struct _" << tstruct->get_name() << "__isset {" << '\n';
     indent_up();
@@ -1434,7 +1449,7 @@ void t_cpp_generator::generate_struct_declaration(ostream& out,
 
     // Default constructor
     std::string clsname_ctor = tstruct->get_name() + "()";
-    indent(out) << clsname_ctor << (has_default_value ? "" : " noexcept") << ";" << '\n';
+    indent(out) << clsname_ctor << (!is_cpp17 && has_default_value ? "" : " noexcept") << ";" << '\n';
   }
 
   if (tstruct->annotations_.find("final") == tstruct->annotations_.end()) {
@@ -1447,27 +1462,33 @@ void t_cpp_generator::generate_struct_declaration(ostream& out,
     indent(out) << declare_field(*m_iter,
                                  false,
                                  (pointers && !(*m_iter)->get_type()->is_xception()),
-                                 !read) << '\n';
+                                 !read,
+                                 false,
+                                 is_cpp17) << '\n';
   }
 
   // Add the __isset data member if we need it, using the definition from above
-  if (has_nonrequired_fields && (!pointers || read)) {
+  if (!is_cpp17 && has_nonrequired_fields && (!pointers || read)) {
     out << '\n' << indent() << "_" << tstruct->get_name() << "__isset __isset;" << '\n';
   }
 
-  // Create a setter function for each field
-  for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-    if (pointers) {
-      continue;
-    }
-    if (is_reference((*m_iter))) {
-      out << '\n' << indent() << "void __set_" << (*m_iter)->get_name() << "(::std::shared_ptr<"
-          << type_name((*m_iter)->get_type(), false, false) << ">";
-      out << " val);" << '\n';
-    } else {
-      out << '\n' << indent() << "void __set_" << (*m_iter)->get_name() << "("
-          << type_name((*m_iter)->get_type(), false, true);
-      out << " val);" << '\n';
+  if (!is_cpp17) {
+    // Create a setter function for each field
+    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+      if (pointers) {
+        continue;
+      }
+      if (is_reference((*m_iter))) {
+        out << '\n'
+            << indent() << "void __set_" << (*m_iter)->get_name() << "(::std::shared_ptr<"
+            << type_name((*m_iter)->get_type(), false, false) << ">";
+        out << " val);" << '\n';
+      } else {
+        out << '\n'
+            << indent() << "void __set_" << (*m_iter)->get_name() << "("
+            << type_name((*m_iter)->get_type(), false, true);
+        out << " val);" << '\n';
+      }
     }
   }
   out << '\n';
@@ -1489,9 +1510,16 @@ void t_cpp_generator::generate_struct_declaration(ostream& out,
       out << indent() << "bool operator < (const " << tstruct->get_name() << " & ) const;" << '\n'
           << '\n';
     }
+    // else if(is_cpp17) { // So this is C++20 :(
+    //   // Generate an equality testing operator.
+    //   out << indent() << "bool operator == (const " << tstruct->get_name() << " & "
+    //       << (members.size() > 0 ? "rhs" : "/* rhs */") << ") const = default;" << '\n';
+
+    //   // TODO: Consider spaceship op here: <=>
+    // }
   }
 
-  if (read) {
+  if (!is_cpp17 && read) {
     if (gen_templates_) {
       out << indent() << "template <class Protocol_>" << '\n' << indent()
           << "uint32_t read(Protocol_* iprot);" << '\n';
@@ -1503,7 +1531,7 @@ void t_cpp_generator::generate_struct_declaration(ostream& out,
       out << ';' << '\n';
     }
   }
-  if (write) {
+  if (!is_cpp17 && write) {
     if (gen_templates_) {
       out << indent() << "template <class Protocol_>" << '\n' << indent()
           << "uint32_t write(Protocol_* oprot) const;" << '\n';
@@ -1524,7 +1552,8 @@ void t_cpp_generator::generate_struct_declaration(ostream& out,
   }
 
   // std::exception::what()
-  if (is_exception) {
+  if (!is_cpp17 && is_exception) {
+    // TODO: Figure out what to do with exceptions
     out << indent() << "mutable std::string thriftTExceptionMessageHolder_;" << '\n';
     out << indent();
     generate_exception_what_method_decl(out, tstruct, false);
@@ -1555,14 +1584,20 @@ void t_cpp_generator::generate_struct_definition(ostream& out,
                                                  t_struct* tstruct,
                                                  bool setters,
                                                  bool is_user_struct,
-                                                 bool pointers) {
+                                                 bool pointers,
+                                                 bool is_cpp17) {
   // Get members
   vector<t_field*>::const_iterator m_iter;
   const vector<t_field*>& members = tstruct->get_members();
 
   // Destructor
-  if (tstruct->annotations_.find("final") == tstruct->annotations_.end()) {
-    force_cpp_out << '\n' << indent() << tstruct->get_name() << "::~" << tstruct->get_name()
+  if (is_cpp17) {
+    force_cpp_out  << '\n'
+                  << indent() << tstruct->get_name() << "::~" << tstruct->get_name()
+                  << "() noexcept = default;" << '\n';
+  } else if (tstruct->annotations_.find("final") == tstruct->annotations_.end()) {
+    force_cpp_out  << '\n'
+                  << indent() << tstruct->get_name() << "::~" << tstruct->get_name()
                   << "() noexcept {" << '\n';
     indent_up();
 
@@ -1570,16 +1605,19 @@ void t_cpp_generator::generate_struct_definition(ostream& out,
     force_cpp_out << indent() << "}" << '\n' << '\n';
   }
 
-  if (!pointers)
-  {
-		// 'force_cpp_out' always goes into the .cpp file, and never into a .tcc
-		// file in case templates are involved. Since the constructor is not templated,
-		// putting it into the (later included) .tcc file would cause ODR violations.
+  if (is_cpp17) {
+    // Only generate the constructor. Defaults must be set in the class declaration.
+    indent(force_cpp_out) << tstruct->get_name() + "::" + tstruct->get_name() + "() noexcept = default;" << '\n';
+  } else if (!pointers) {
+    // 'force_cpp_out' always goes into the .cpp file, and never into a .tcc
+    // file in case templates are involved. Since the constructor is not templated,
+    // putting it into the (later included) .tcc file would cause ODR violations.
     generate_default_constructor(force_cpp_out, tstruct, false);
   }
+  out  << '\n';
 
   // Create a setter function for each field
-  if (setters) {
+  if (!is_cpp17 && setters) {
     for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
       if (is_reference((*m_iter))) {
         out << '\n' << indent() << "void " << tstruct->get_name() << "::__set_"
@@ -4623,7 +4661,7 @@ string t_cpp_generator::namespace_close(string ns, bool cpp17) {
  * @param ttype The type
  * @return String of the type name, i.e. std::set<type>
  */
-string t_cpp_generator::type_name(t_type* ttype, bool in_typedef, bool arg) {
+string t_cpp_generator::type_name(t_type* ttype, bool in_typedef, bool arg, bool is_cpp17) {
   if (ttype->is_base_type()) {
     string bname = base_type_name(((t_base_type*)ttype)->get_base());
     std::map<string, std::vector<string>>::iterator it = ttype->annotations_.find("cpp.type");
@@ -4651,14 +4689,14 @@ string t_cpp_generator::type_name(t_type* ttype, bool in_typedef, bool arg) {
       cname = tcontainer->get_cpp_name();
     } else if (ttype->is_map()) {
       t_map* tmap = (t_map*)ttype;
-      cname = "std::map<" + type_name(tmap->get_key_type(), in_typedef) + ", "
-              + type_name(tmap->get_val_type(), in_typedef) + "> ";
+      cname = "std::map<" + type_name(tmap->get_key_type(), in_typedef, false, is_cpp17) + ", "
+              + type_name(tmap->get_val_type(), in_typedef, false, is_cpp17) + "> ";
     } else if (ttype->is_set()) {
       t_set* tset = (t_set*)ttype;
-      cname = "std::set<" + type_name(tset->get_elem_type(), in_typedef) + "> ";
+      cname = "std::set<" + type_name(tset->get_elem_type(), in_typedef, false, is_cpp17) + "> ";
     } else if (ttype->is_list()) {
       t_list* tlist = (t_list*)ttype;
-      cname = "std::vector<" + type_name(tlist->get_elem_type(), in_typedef) + "> ";
+      cname = "std::vector<" + type_name(tlist->get_elem_type(), in_typedef, false, is_cpp17) + "> ";
     }
 
     if (arg) {
@@ -4682,7 +4720,7 @@ string t_cpp_generator::type_name(t_type* ttype, bool in_typedef, bool arg) {
     pname = class_prefix + ttype->get_name();
   }
 
-  if (ttype->is_enum() && !gen_pure_enums_) {
+  if (!is_cpp17 && ttype->is_enum() && !gen_pure_enums_) {
     pname += "::type";
   }
 
@@ -4736,14 +4774,17 @@ string t_cpp_generator::declare_field(t_field* tfield,
                                       bool init,
                                       bool pointer,
                                       bool constant,
-                                      bool reference) {
+                                      bool reference,
+                                      bool is_cpp17) {
   // TODO(mcslee): do we ever need to initialize the field?
   string result = "";
   if (constant) {
     result += "const ";
   }
-  result += type_name(tfield->get_type());
-  if (is_reference(tfield)) {
+  result += type_name(tfield->get_type(), false, false, is_cpp17);
+  if(is_cpp17) {
+    result = "::std::optional<" + result + ">";
+  } else if (is_reference(tfield)) {
     result = "::std::shared_ptr<" + result + ">";
   }
   if (pointer) {
