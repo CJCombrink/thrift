@@ -44,6 +44,14 @@ using std::vector;
 
 static const string endl = "\n"; // avoid ostream << std::endl flushes
 
+enum class e_cpp17 {
+  NO = 0,
+  YES = 1,
+};
+inline bool constexpr cpp17(e_cpp17 is_cpp) {
+  return is_cpp == e_cpp17::YES;
+}
+
 /**
  * C++ code generator. This is legitimacy incarnate.
  *
@@ -174,8 +182,8 @@ public:
   void generate_struct_reader(std::ostream& out, t_struct* tstruct, bool pointers = false);
   void generate_struct_writer(std::ostream& out, t_struct* tstruct, bool pointers = false);
   void generate_struct_result_writer(std::ostream& out, t_struct* tstruct, bool pointers = false);
-  void generate_struct_swap(std::ostream& out, t_struct* tstruct);
-  void generate_struct_print_method(std::ostream& out, t_struct* tstruct);
+  void generate_struct_swap(std::ostream& out, t_struct* tstruct, bool is_cpp17);
+  void generate_struct_print_method(std::ostream& out, t_struct* tstruct, e_cpp17 is_cpp17);
   void generate_exception_what_method(std::ostream& out, t_struct* tstruct);
 
   /**
@@ -503,6 +511,9 @@ void t_cpp_generator::init_generator() {
            << "#include <thrift/protocol/TProtocol.h>" << endl
            << "#include <thrift/transport/TTransport.h>" << endl
            << endl;
+
+  f_types_cpp17_impl_ << "#include <thrift/Thrift.h>\n"
+                         "#include <thrift/TToStringCpp17.h>\n\n";
   // Include C++xx compatibility header
   f_types_ << "#include <functional>" << endl;
   f_types_ << "#include <memory>" << endl;
@@ -1077,7 +1088,8 @@ void t_cpp_generator::generate_cpp_struct(t_struct* tstruct, bool is_exception) 
   std::ostream& out = (gen_templates_ ? f_types_tcc_ : f_types_impl_);
   generate_struct_reader(out, tstruct);
   generate_struct_writer(out, tstruct);
-  generate_struct_swap(f_types_impl_, tstruct);
+  generate_struct_swap(f_types_impl_, tstruct, false);
+  generate_struct_swap(f_types_cpp17_impl_, tstruct, true);
   if (!gen_no_default_operators_) {
     generate_equality_operator(f_types_impl_, tstruct);
   }
@@ -1091,7 +1103,8 @@ void t_cpp_generator::generate_cpp_struct(t_struct* tstruct, bool is_exception) 
   }
 
   if (!has_custom_ostream(tstruct)) {
-    generate_struct_print_method(f_types_impl_, tstruct);
+    generate_struct_print_method(f_types_impl_, tstruct, e_cpp17::NO);
+    generate_struct_print_method(f_types_cpp17_impl_, tstruct, e_cpp17::YES);
   }
 
   if (is_exception) {
@@ -1918,7 +1931,7 @@ void t_cpp_generator::generate_struct_result_writer(ostream& out,
  * @param out Stream to write to
  * @param tstruct The struct
  */
-void t_cpp_generator::generate_struct_swap(ostream& out, t_struct* tstruct) {
+void t_cpp_generator::generate_struct_swap(ostream& out, t_struct* tstruct, bool is_cpp17) {
   if (tstruct->get_name() == "a" || tstruct->get_name() == "b") {
     out << indent() << "void swap(" << tstruct->get_name() << " &a1, " << tstruct->get_name()
         << " &a2) {" << endl;
@@ -1950,7 +1963,7 @@ void t_cpp_generator::generate_struct_swap(ostream& out, t_struct* tstruct) {
     }
   }
 
-  if (has_nonrequired_fields) {
+  if (!is_cpp17 && has_nonrequired_fields) {
     if (tstruct->get_name() == "a" || tstruct->get_name() == "b") {
       out << indent() << "swap(a1.__isset, a2.__isset);" << endl;
     } else {
@@ -2019,15 +2032,20 @@ void generate_required_field_value(std::ostream& out, const t_field* field) {
   out << " << to_string(" << field->get_name() << ")";
 }
 
-void generate_optional_field_value(std::ostream& out, const t_field* field) {
-  out << "; (__isset." << field->get_name() << " ? (out";
-  generate_required_field_value(out, field);
-  out << ") : (out << \"<null>\"))";
+void generate_optional_field_value(std::ostream& out, const t_field* field, e_cpp17 is_cpp17) {
+
+  if (is_cpp17 == e_cpp17::YES) {
+    generate_required_field_value(out, field);
+  } else {
+    out << "; (__isset." << field->get_name() << " ? (out";
+    generate_required_field_value(out, field);
+    out << ") : (out << \"<null>\"))";
+  }
 }
 
-void generate_field_value(std::ostream& out, const t_field* field) {
+void generate_field_value(std::ostream& out, const t_field* field, e_cpp17 is_cpp17) {
   if (field->get_req() == t_field::T_OPTIONAL)
-    generate_optional_field_value(out, field);
+    generate_optional_field_value(out, field, is_cpp17);
   else
     generate_required_field_value(out, field);
 }
@@ -2036,14 +2054,15 @@ void generate_field_name(std::ostream& out, const t_field* field) {
   out << "\"" << field->get_name() << "=\"";
 }
 
-void generate_field(std::ostream& out, const t_field* field) {
+void generate_field(std::ostream& out, const t_field* field, e_cpp17 is_cpp17) {
   generate_field_name(out, field);
-  generate_field_value(out, field);
+  generate_field_value(out, field, is_cpp17);
 }
 
 void generate_fields(std::ostream& out,
                      const vector<t_field*>& fields,
-                     const std::string& indent) {
+                     const std::string& indent,
+                     e_cpp17 is_cpp17) {
   const vector<t_field*>::const_iterator beg = fields.begin();
   const vector<t_field*>::const_iterator end = fields.end();
 
@@ -2054,7 +2073,7 @@ void generate_fields(std::ostream& out,
       out << "\", \" << ";
     }
 
-    generate_field(out, *it);
+    generate_field(out, *it, is_cpp17);
     out << ";" << endl;
   }
 }
@@ -2063,7 +2082,7 @@ void generate_fields(std::ostream& out,
 /**
  * Generates operator<<
  */
-void t_cpp_generator::generate_struct_print_method(std::ostream& out, t_struct* tstruct) {
+void t_cpp_generator::generate_struct_print_method(std::ostream& out, t_struct* tstruct, e_cpp17 is_cpp17) {
   out << indent();
   generate_struct_print_method_decl(out, tstruct);
   out << " {" << endl;
@@ -2072,7 +2091,7 @@ void t_cpp_generator::generate_struct_print_method(std::ostream& out, t_struct* 
 
   out << indent() << "using ::apache::thrift::to_string;" << endl;
   out << indent() << "out << \"" << tstruct->get_name() << "(\";" << endl;
-  struct_ostream_operator_generator::generate_fields(out, tstruct->get_members(), indent());
+  struct_ostream_operator_generator::generate_fields(out, tstruct->get_members(), indent(), is_cpp17);
   out << indent() << "out << \")\";" << endl;
 
   indent_down();
