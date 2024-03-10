@@ -1417,11 +1417,15 @@ void t_cpp_generator::generate_struct_declaration(ostream& out,
   generate_java_doc(out, tstruct);
 
   // Open struct def
-  out << indent() << "class " << tstruct->get_name() << extends << " {\n" << indent()
-      << " public:\n\n";
+  if (is_cpp17) {
+    out << indent() << "struct " << tstruct->get_name() << extends << " {\n";
+  } else {
+    out << indent() << "class " << tstruct->get_name() << extends << " {\n"
+        << indent() << " public:\n\n";
+  }
   indent_up();
 
-  if (!pointers) {
+  if (!is_cpp17 && !pointers) {
     bool ok_noexcept = is_struct_storage_not_throwing(tstruct);
     // Copy constructor
     indent(out) << tstruct->get_name() << "(const " << tstruct->get_name() << "&)"
@@ -1445,10 +1449,17 @@ void t_cpp_generator::generate_struct_declaration(ostream& out,
 
     // Default constructor
     std::string clsname_ctor = tstruct->get_name() + "()";
-    indent(out) << clsname_ctor << (!is_cpp17 && has_default_value ? "" : " noexcept") << ";\n";
+    indent(out) << clsname_ctor << (has_default_value ? "" : " noexcept") << ";\n";
   }
 
-  if (tstruct->annotations_.find("final") == tstruct->annotations_.end()) {
+  if (is_cpp17) {
+    // Default constructor
+    // So C++17 sees this as an Aggregate class,
+    // C++20 is more strict and it is not an Aggregate class anymore
+    out << indent() <<  tstruct->get_name() << "() noexcept = default;\n\n";
+  }
+
+  if (!is_cpp17 && tstruct->annotations_.find("final") == tstruct->annotations_.end()) {
     out << "\n" << indent() << "virtual ~" << tstruct->get_name() << "() noexcept;\n";
   }
 
@@ -1460,7 +1471,7 @@ void t_cpp_generator::generate_struct_declaration(ostream& out,
                                  (pointers && !(*m_iter)->get_type()->is_xception()),
                                  !read,
                                  false,
-                                 is_cpp17) << endl;
+                                 is_cpp17) << "\n";
   }
 
   // Add the __isset data member if we need it, using the definition from above
@@ -1539,7 +1550,10 @@ void t_cpp_generator::generate_struct_declaration(ostream& out,
   out << "\n";
 
   if (is_user_struct && !has_custom_ostream(tstruct)) {
-    out << indent() << "virtual ";
+    out << indent();
+    if (!is_cpp17) {
+       out << "virtual ";
+    }
     generate_struct_print_method_decl(out, nullptr);
     out << ";\n";
   }
@@ -1584,11 +1598,7 @@ void t_cpp_generator::generate_struct_definition(ostream& out,
   const vector<t_field*>& members = tstruct->get_members();
 
   // Destructor
-  if (is_cpp17) {
-    force_cpp_out << "\n"
-                  << indent() << tstruct->get_name() << "::~" << tstruct->get_name()
-                  << "() noexcept = default;\n";
-  } else if (tstruct->annotations_.find("final") == tstruct->annotations_.end()) {
+  if (!is_cpp17 && tstruct->annotations_.find("final") == tstruct->annotations_.end()) {
     force_cpp_out << "\n"
                   << indent() << tstruct->get_name() << "::~" << tstruct->get_name()
                   << "() noexcept {\n";
@@ -1598,10 +1608,7 @@ void t_cpp_generator::generate_struct_definition(ostream& out,
     force_cpp_out << indent() << "}\n\n";
   }
 
-  if (is_cpp17) {
-    // Only generate the constructor. Defaults must be set in the class declaration.
-    indent(force_cpp_out) << tstruct->get_name() + "::" + tstruct->get_name() + "() noexcept = default;\n";
-  } else if (!pointers) {
+  if (!is_cpp17 && !pointers) {
     // 'force_cpp_out' always goes into the .cpp file, and never into a .tcc
     // file in case templates are involved. Since the constructor is not templated,
     // putting it into the (later included) .tcc file would cause ODR violations.
@@ -4722,9 +4729,10 @@ string t_cpp_generator::declare_field(t_field* tfield,
     result += "const ";
   }
   result += type_name(tfield->get_type(), false, false, is_cpp17);
-  if(is_cpp17) {
+  if(is_cpp17 && (tfield->get_req() == t_field::T_OPTIONAL)) {
     result = "::std::optional<" + result + ">";
-  } else if (is_reference(tfield)) {
+  }
+  if (is_reference(tfield)) {
     result = "::std::shared_ptr<" + result + ">";
   }
   if (pointer) {
@@ -4737,7 +4745,9 @@ string t_cpp_generator::declare_field(t_field* tfield,
   if (init) {
     t_type* type = get_true_type(tfield->get_type());
 
-    if (type->is_base_type()) {
+    if (is_cpp17) {
+      result += " = {}";
+    } else if (type->is_base_type()) {
       t_base_type::t_base tbase = ((t_base_type*)type)->get_base();
       switch (tbase) {
       case t_base_type::TYPE_VOID:
