@@ -177,7 +177,7 @@ public:
   void generate_equality_operator(std::ostream& out, t_struct* tstruct);
   void generate_move_assignment_operator(std::ostream& out, t_struct* tstruct);
   void generate_assignment_helper(std::ostream& out, t_struct* tstruct, bool is_move);
-  void generate_struct_reader(std::ostream& out, t_struct* tstruct, bool pointers = false);
+  void generate_struct_reader(std::ostream& out, t_struct* tstruct, bool pointers = false, e_cpp17 is_cpp17 = e_cpp17::NO);
   void generate_struct_writer(std::ostream& out, t_struct* tstruct, bool pointers = false);
   void generate_struct_result_writer(std::ostream& out, t_struct* tstruct, bool pointers = false);
   void generate_struct_swap(std::ostream& out, t_struct* tstruct, bool is_cpp17);
@@ -210,24 +210,32 @@ public:
   void generate_deserialize_field(std::ostream& out,
                                   t_field* tfield,
                                   std::string prefix = "",
-                                  std::string suffix = "");
+                                  std::string suffix = "",
+                                  e_cpp17 is_cpp17 = e_cpp17::NO);
 
   void generate_deserialize_struct(std::ostream& out,
                                    t_struct* tstruct,
                                    std::string prefix = "",
-                                   bool pointer = false);
+                                   bool pointer = false,
+                                   e_cpp17 is_cpp17 = e_cpp17::NO);
 
-  void generate_deserialize_container(std::ostream& out, t_type* ttype, std::string prefix = "");
+  void generate_deserialize_container(std::ostream& out,
+                                      t_type* ttype,
+                                      std::string prefix = "",
+                                      e_cpp17 is_cpp17 = e_cpp17::NO);
 
-  void generate_deserialize_set_element(std::ostream& out, t_set* tset, std::string prefix = "");
+  void generate_deserialize_set_element(std::ostream& out, t_set* tset, std::string prefix = "",
+                                      e_cpp17 is_cpp17 = e_cpp17::NO);
 
-  void generate_deserialize_map_element(std::ostream& out, t_map* tmap, std::string prefix = "");
+  void generate_deserialize_map_element(std::ostream& out, t_map* tmap, std::string prefix = "",
+                                      e_cpp17 is_cpp17 = e_cpp17::NO);
 
   void generate_deserialize_list_element(std::ostream& out,
                                          t_list* tlist,
                                          std::string prefix,
                                          bool push_back,
-                                         std::string index);
+                                         std::string index,
+                                      e_cpp17 is_cpp17 = e_cpp17::NO);
 
   void generate_serialize_field(std::ostream& out,
                                 t_field* tfield,
@@ -509,6 +517,7 @@ void t_cpp_generator::init_generator() {
            << "#include <thrift/transport/TTransport.h>\n\n";
 
   f_types_cpp17_impl_ << "#include <thrift/Thrift.h>\n"
+                         "#include <thrift/protocol/TProtocol.h>\n"
                          "#include <thrift/TToStringCpp17.h>\n\n";
   // Include C++xx compatibility header
   f_types_ << "#include <functional>\n";
@@ -1081,7 +1090,8 @@ void t_cpp_generator::generate_cpp_struct(t_struct* tstruct, bool is_exception) 
   generate_struct_definition(f_types_cpp17_impl_, f_types_cpp17_impl_, tstruct, true, true, false, true);
 
   std::ostream& out = (gen_templates_ ? f_types_tcc_ : f_types_impl_);
-  generate_struct_reader(out, tstruct);
+  generate_struct_reader(out, tstruct, false, e_cpp17::NO);
+  generate_struct_reader(f_types_cpp17_impl_, tstruct, false, e_cpp17::YES);
   generate_struct_writer(out, tstruct);
   generate_struct_swap(f_types_impl_, tstruct, false);
   generate_struct_swap(f_types_cpp17_impl_, tstruct, true);
@@ -1594,6 +1604,28 @@ void t_cpp_generator::generate_struct_declaration(ostream& out,
     }
   }
 
+  if (is_cpp17) {
+    const std::string name = (tstruct->get_name() == std::string{"a"}) ? "a1" : "a";
+    const std::string prot_type
+        = gen_templates_ ? "Protocol_" : "::apache::thrift::protocol::TProtocol";
+
+    if (read) {
+      if (gen_templates_) {
+        out << indent() << "template <class " << prot_type << ">\n";
+      }
+      out << indent() << "uint32_t read(" << prot_type << "* iprot, " << tstruct->get_name()
+          << " &" << name << ");\n\n";
+    }
+
+    if (write) {
+      if (gen_templates_) {
+        out << indent() << "template <class " << prot_type << ">\n";
+      }
+      out << indent() << "uint32_t write(" << prot_type << "* oprot, const " << tstruct->get_name()
+          << " &" << name << ");\n\n";
+    }
+  }
+
   if (is_user_struct) {
     generate_struct_ostream_operator_decl(out, tstruct);
   }
@@ -1667,13 +1699,27 @@ void t_cpp_generator::generate_struct_definition(ostream& out,
  * @param out Stream to write to
  * @param tstruct The struct
  */
-void t_cpp_generator::generate_struct_reader(ostream& out, t_struct* tstruct, bool pointers) {
+void t_cpp_generator::generate_struct_reader(ostream& out, t_struct* tstruct, bool pointers, e_cpp17 is_cpp17) {
+  const std::string name = (tstruct->get_name() == std::string{"a"}) ? "a1" : "a";
+  const std::string prot_type
+      = gen_templates_ ? "Protocol_" : "::apache::thrift::protocol::TProtocol";
+
   if (gen_templates_) {
-    out << indent() << "template <class Protocol_>\n" << indent() << "uint32_t "
-        << tstruct->get_name() << "::read(Protocol_* iprot) {\n";
+    out << indent() << "template <class Protocol_>\n";
+    if (is_cpp17 == e_cpp17::NO) {
+      out << indent() << "uint32_t " << tstruct->get_name() << "::read(Protocol_* iprot) {\n";
+    } else {
+      out << indent() << "uint32_t read(Protocol_* iprot, " << tstruct->get_name() << "& " << name
+          << ") {\n";
+    }
   } else {
-    indent(out) << "uint32_t " << tstruct->get_name()
-                << "::read(::apache::thrift::protocol::TProtocol* iprot) {\n";
+    if (is_cpp17 == e_cpp17::NO) {
+      indent(out) << "uint32_t " << tstruct->get_name()
+                  << "::read(::apache::thrift::protocol::TProtocol* iprot) {\n";
+    } else {
+      out << indent() << "uint32_t read(::apache::thrift::protocol::TProtocol* iprot, " << tstruct->get_name()
+          << " &" << name << ");\n\n";
+    }
   }
   indent_up();
 
@@ -1689,6 +1735,12 @@ void t_cpp_generator::generate_struct_reader(ostream& out, t_struct* tstruct, bo
       << indent() << "int16_t fid;\n\n"
       << indent() << "xfer += iprot->readStructBegin(fname);\n\n"
       << indent() << "using ::apache::thrift::protocol::TProtocolException;\n\n";
+
+  const std::string this_name = (is_cpp17 == e_cpp17::NO) ? "this->" : name + ".";
+  if (is_cpp17 == e_cpp17::YES) {
+    out << indent() << "// Default init the structure before reading\n"
+        << indent() << name << " = {};\n\n";
+  }
 
   // Required variables aren't in __isset, so we need tmp vars to check them.
   for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
@@ -1723,8 +1775,8 @@ void t_cpp_generator::generate_struct_reader(ostream& out, t_struct* tstruct, bo
       indent(out) << "if (ftype == " << type_to_enum((*f_iter)->get_type()) << ") {\n";
       indent_up();
 
-      const char* isset_prefix = ((*f_iter)->get_req() != t_field::T_REQUIRED) ? "this->__isset."
-                                                                               : "isset_";
+      const std::string isset_prefix
+          = ((*f_iter)->get_req() != t_field::T_REQUIRED) ? this_name + "__isset." : "isset_";
 
 #if 0
           // This code throws an exception if the same field is encountered twice.
@@ -1737,11 +1789,13 @@ void t_cpp_generator::generate_struct_reader(ostream& out, t_struct* tstruct, bo
 #endif
 
       if (pointers && !(*f_iter)->get_type()->is_xception()) {
-        generate_deserialize_field(out, *f_iter, "(*(this->", "))");
+        generate_deserialize_field(out, *f_iter, std::string{"(*("} + this_name , "))", is_cpp17);
       } else {
-        generate_deserialize_field(out, *f_iter, "this->");
+        generate_deserialize_field(out, *f_iter, this_name, {}, is_cpp17);
       }
-      out << indent() << isset_prefix << (*f_iter)->get_name() << " = true;\n";
+      if (is_cpp17 == e_cpp17::NO) {
+        out << indent() << isset_prefix << (*f_iter)->get_name() << " = true;\n";
+      }
       indent_down();
       out << indent() << "} else {\n" << indent() << "  xfer += iprot->skip(ftype);\n"
           <<
@@ -4170,7 +4224,8 @@ void t_cpp_generator::generate_service_skeleton(t_service* tservice) {
 void t_cpp_generator::generate_deserialize_field(ostream& out,
                                                  t_field* tfield,
                                                  string prefix,
-                                                 string suffix) {
+                                                 string suffix,
+                                                 e_cpp17 is_cpp17) {
   t_type* type = get_true_type(tfield->get_type());
 
   if (type->is_void()) {
@@ -4180,9 +4235,13 @@ void t_cpp_generator::generate_deserialize_field(ostream& out,
   string name = prefix + tfield->get_name() + suffix;
 
   if (type->is_struct() || type->is_xception()) {
-    generate_deserialize_struct(out, (t_struct*)type, name, is_reference(tfield));
+    generate_deserialize_struct(out, (t_struct*)type, name, is_reference(tfield), is_cpp17);
   } else if (type->is_container()) {
-    generate_deserialize_container(out, type, name);
+    if((is_cpp17 == e_cpp17::YES) && (tfield->get_req() == t_field::T_OPTIONAL)) {
+        indent(out) << "auto& tmp = " << name << ".emplace(typename std::decay_t<decltype(" << name<< ")>::value_type{});\n";
+        name = "tmp";
+    }
+    generate_deserialize_container(out, type, name, is_cpp17);
   } else if (type->is_base_type()) {
     indent(out) << "xfer += iprot->";
     t_base_type::t_base tbase = ((t_base_type*)type)->get_base();
@@ -4221,9 +4280,11 @@ void t_cpp_generator::generate_deserialize_field(ostream& out,
     out << "\n";
   } else if (type->is_enum()) {
     string t = tmp("ecast");
-    out << indent() << "int32_t " << t << ";\n" << indent() << "xfer += iprot->readI32(" << t
-        << ");\n" << indent() << name << " = static_cast<"
-        << type_name(type) << ">(" << t << ");\n";
+    out << indent() << "int32_t " << t << ";\n"
+        << indent() << "xfer += iprot->readI32(" << t << ");\n"
+        << indent() << name << " = static_cast<"
+        << type_name(type, false, false, is_cpp17 == e_cpp17::YES) << ">(" << t << ");"
+        << "\n";
   } else {
     printf("DO NOT KNOW HOW TO DESERIALIZE FIELD '%s' TYPE '%s'\n",
            tfield->get_name().c_str(),
@@ -4240,7 +4301,8 @@ void t_cpp_generator::generate_deserialize_field(ostream& out,
 void t_cpp_generator::generate_deserialize_struct(ostream& out,
                                                   t_struct* tstruct,
                                                   string prefix,
-                                                  bool pointer) {
+                                                  bool pointer,
+                                                  e_cpp17 is_cpp17) {
   if (pointer) {
     indent(out) << "if (!" << prefix << ") { \n";
     indent(out) << "  " << prefix << " = ::std::shared_ptr<" << type_name(tstruct) << ">(new "
@@ -4257,11 +4319,18 @@ void t_cpp_generator::generate_deserialize_struct(ostream& out,
     }
     indent(out) << "if (!wasSet) { " << prefix << ".reset(); }\n";
   } else {
-    indent(out) << "xfer += " << prefix << ".read(iprot);\n";
+    if (is_cpp17 == e_cpp17::NO) {
+      indent(out) << "xfer += " << prefix << ".read(iprot);\n";
+    } else {
+      indent(out) << "xfer += read(iprot, "<< prefix<< ");\n";
+    }
   }
 }
 
-void t_cpp_generator::generate_deserialize_container(ostream& out, t_type* ttype, string prefix) {
+void t_cpp_generator::generate_deserialize_container(ostream& out,
+                                                     t_type* ttype,
+                                                     string prefix,
+                                                     e_cpp17 is_cpp17) {
   scope_up(out);
 
   string size = tmp("_size");
@@ -4298,11 +4367,11 @@ void t_cpp_generator::generate_deserialize_container(ostream& out, t_type* ttype
   scope_up(out);
 
   if (ttype->is_map()) {
-    generate_deserialize_map_element(out, (t_map*)ttype, prefix);
+    generate_deserialize_map_element(out, (t_map*)ttype, prefix, is_cpp17);
   } else if (ttype->is_set()) {
-    generate_deserialize_set_element(out, (t_set*)ttype, prefix);
+    generate_deserialize_set_element(out, (t_set*)ttype, prefix, is_cpp17);
   } else if (ttype->is_list()) {
-    generate_deserialize_list_element(out, (t_list*)ttype, prefix, use_push, i);
+    generate_deserialize_list_element(out, (t_list*)ttype, prefix, use_push, i, is_cpp17);
   }
 
   scope_down(out);
@@ -4322,28 +4391,34 @@ void t_cpp_generator::generate_deserialize_container(ostream& out, t_type* ttype
 /**
  * Generates code to deserialize a map
  */
-void t_cpp_generator::generate_deserialize_map_element(ostream& out, t_map* tmap, string prefix) {
+void t_cpp_generator::generate_deserialize_map_element(ostream& out,
+                                                       t_map* tmap,
+                                                       string prefix,
+                                                       e_cpp17 is_cpp17) {
   string key = tmp("_key");
   string val = tmp("_val");
   t_field fkey(tmap->get_key_type(), key);
   t_field fval(tmap->get_val_type(), val);
 
-  out << indent() << declare_field(&fkey) << "\n";
+  out << indent() << declare_field(&fkey, false, false, false, false, is_cpp17 == e_cpp17::YES) << "\n";
 
-  generate_deserialize_field(out, &fkey);
-  indent(out) << declare_field(&fval, false, false, false, true) << " = " << prefix << "[" << key
+  generate_deserialize_field(out, &fkey, std::string{}, std::string{}, is_cpp17);
+  indent(out) << declare_field(&fval, false, false, false, true, is_cpp17 == e_cpp17::YES) << " = " << prefix << "[" << key
               << "];\n";
 
-  generate_deserialize_field(out, &fval);
+  generate_deserialize_field(out, &fval, std::string{}, std::string{}, is_cpp17);
 }
 
-void t_cpp_generator::generate_deserialize_set_element(ostream& out, t_set* tset, string prefix) {
+void t_cpp_generator::generate_deserialize_set_element(ostream& out,
+                                                       t_set* tset,
+                                                       string prefix,
+                                                       e_cpp17 is_cpp17) {
   string elem = tmp("_elem");
   t_field felem(tset->get_elem_type(), elem);
 
-  indent(out) << declare_field(&felem) << "\n";
+  indent(out) << declare_field(&felem, false, false, false, false, is_cpp17 == e_cpp17::YES) << "\n";
 
-  generate_deserialize_field(out, &felem);
+  generate_deserialize_field(out, &felem, std::string{}, std::string{}, is_cpp17);
 
   indent(out) << prefix << ".insert(" << elem << ");\n";
 }
@@ -4352,16 +4427,17 @@ void t_cpp_generator::generate_deserialize_list_element(ostream& out,
                                                         t_list* tlist,
                                                         string prefix,
                                                         bool use_push,
-                                                        string index) {
+                                                        string index,
+                                                        e_cpp17 is_cpp17) {
   if (use_push) {
     string elem = tmp("_elem");
     t_field felem(tlist->get_elem_type(), elem);
-    indent(out) << declare_field(&felem) << "\n";
-    generate_deserialize_field(out, &felem);
+    indent(out) << declare_field(&felem, false, false, false, true, is_cpp17 == e_cpp17::YES) << "\n";
+    generate_deserialize_field(out, &felem, std::string{}, std::string{}, is_cpp17);
     indent(out) << prefix << ".push_back(" << elem << ");\n";
   } else {
     t_field felem(tlist->get_elem_type(), prefix + "[" + index + "]");
-    generate_deserialize_field(out, &felem);
+    generate_deserialize_field(out, &felem, std::string{}, std::string{}, is_cpp17);
   }
 }
 
