@@ -253,24 +253,24 @@ int main(int argc, char** argv) {
 
   usage << argv[0] << " [--port=<port number>] [--server] [--server-type=<server-type>] "
                       "[--protocol-type=<protocol-type>] [--workers=<worker-count>] "
-                      "[--clients=<client-count>] [--loop=<loop-count>]" << endl
+                      "[--clients=<client-count>] [--loop=<loop-count>]\n"
         << "\tclients        Number of client threads to create - 0 implies no clients, i.e. "
-           "server only.  Default is " << clientCount << endl
-        << "\thelp           Prints this help text." << endl
-        << "\tcall           Service method to call.  Default is " << callName << endl
+           "server only.  Default is " << clientCount << "\n"
+        << "\thelp           Prints this help text.\n"
+        << "\tcall           Service method to call.  Default is " << callName << "\n"
         << "\tloop           The number of remote thrift calls each client makes.  Default is "
-        << loopCount << endl << "\tport           The port the server and clients should bind to "
-                                "for thrift network connections.  Default is " << port << endl
+        << loopCount << "\n\tport           The port the server and clients should bind to "
+                                "for thrift network connections.  Default is " << port << "\n"
         << "\tserver         Run the Thrift server in this process.  Default is " << runServer
-        << endl << "\tserver-type    Type of server, \"simple\" or \"thread-pool\".  Default is "
-        << serverType << endl
+        << "\n\tserver-type    Type of server, \"simple\" or \"thread-pool\".  Default is "
+        << serverType << "\n"
         << "\tprotocol-type  Type of protocol, \"binary\", \"ascii\", or \"xml\".  Default is "
-        << protocolType << endl
+        << protocolType << "\n"
         << "\tlog-request    Log all request to ./requestlog.tlog. Default is " << logRequests
-        << endl << "\treplay-request Replay requests from log file (./requestlog.tlog) Default is "
-        << replayRequests << endl << "\tworkers        Number of thread pools workers.  Only valid "
+        << "\n\treplay-request Replay requests from log file (./requestlog.tlog) Default is "
+        << replayRequests << "\n\tworkers        Number of thread pools workers.  Only valid "
                                      "for thread-pool server type.  Default is " << workerCount
-        << endl;
+        << "\n";
 
   map<string, string> args;
 
@@ -528,7 +528,7 @@ int main(int argc, char** argv) {
     averageTime /= clientCount;
 
     cout << "workers :" << workerCount << ", client : " << clientCount << ", loops : " << loopCount
-         << ", rate : " << (clientCount * loopCount * 1000) / ((double)(time01 - time00)) << endl;
+         << ", rate : " << (clientCount * loopCount * 1000) / ((double)(time01 - time00)) << "\n";
 
     count_map count = serviceHandler->getCount();
     count_map::iterator iter;

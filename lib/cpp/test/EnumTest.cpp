@@ -22,7 +22,7 @@
 
 std::ostream& operator <<(std::ostream& os, const MyEnumWithCustomOstream::type& val)
 {
-  os << "{" << (int)val << ":CUSTOM!" << "}";
+  os << "{" << (int)val << ":CUSTOM!}";
   return os;
 }
 
