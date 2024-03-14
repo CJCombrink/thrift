@@ -389,7 +389,7 @@ class TestProcessorEventHandler : public TProcessorEventHandler {
   }
 
   void communicate(const char* event, void* ctx, const char* fn_name) {
-    std::cout << event << ": " << *static_cast<std::string*>(ctx) << " = " << fn_name << std::endl;
+    std::cout << event << ": " << *static_cast<std::string*>(ctx) << " = " << fn_name << '\n';
   }
 };
 

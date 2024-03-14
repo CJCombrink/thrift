@@ -70,7 +70,7 @@ using namespace thrift::test;
 //
 
 template<typename Proto>
-class TPedanticProtocol : public Proto 
+class TPedanticProtocol : public Proto
 {
     public:
         TPedanticProtocol(std::shared_ptr<TTransport>& transport)
@@ -98,7 +98,7 @@ class TPedanticProtocol : public Proto
                 ss << "ERROR: send request with seqid " << m_last_seqid << " and got reply with seqid " << seqid;
                 throw std::logic_error(ss.str());
             } /* else {
-                std::cout << "verified seqid " << m_last_seqid << " round trip OK" << std::endl;
+                std::cout << "verified seqid " << m_last_seqid << " round trip OK" << '\n';
             } */
             return result;
         }

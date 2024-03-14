@@ -549,7 +549,7 @@ void t_erl_generator::generate_enum_info(t_enum* tenum){
     }
     indent_down();
   }
-  f_types_file_ << "\n";
+  f_types_file_ << '\n';
   indent(f_types_file_) << "];\n\n";
   indent_down();
 }

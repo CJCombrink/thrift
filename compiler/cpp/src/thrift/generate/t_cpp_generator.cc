@@ -969,7 +969,7 @@ void t_cpp_generator::generate_equality_operator(std::ostream& out, t_struct* ts
   }
   indent(out) << "return true;" << '\n';
   scope_down(out);
-  out << "\n";
+  out << '\n';
 }
 
 bool t_cpp_generator::has_field_with_default_value(t_struct* tstruct)
@@ -1012,7 +1012,7 @@ void t_cpp_generator::generate_default_constructor(ostream& out,
   // Default-initialize TException, if it is our base type
   if (is_exception)
   {
-    out << "\n";
+    out << '\n';
     indent(out) << " : ";
     out << "TException()";
     init_ctor = true;
