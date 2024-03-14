@@ -757,7 +757,7 @@ int main(int argc, char** argv) {
   if (port != 0) {
     cout << port;
   }
-  cout << endl;
+  cout << '\n';
 
   // Multiplexed Processor if needed
   if (boost::starts_with(protocol_type, "multi")) {
@@ -847,6 +847,6 @@ int main(int argc, char** argv) {
     server.reset();
   }
 
-  cout << "done." << endl;
+  cout << "done." << '\n';
   return 0;
 }
