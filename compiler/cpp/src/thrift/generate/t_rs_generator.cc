@@ -31,7 +31,6 @@ using std::set;
 using std::string;
 using std::vector;
 
-static const string endl("\n"); // avoid ostream << std::endl flushes
 static const string SERVICE_RESULT_VARIABLE("result_value");
 static const string RESULT_STRUCT_SUFFIX("Result");
 static const string RUST_RESERVED_WORDS[]

@@ -850,17 +850,17 @@ void t_go_generator::generate_enum(t_enum* tenum) {
   f_types_ << "}" << '\n' << '\n';
 
   // Generate Scan for sql.Scanner interface
-  f_types_ << "func (p *" << tenum_name << ") Scan(value interface{}) error {" <<endl;
-  f_types_ << "v, ok := value.(int64)" <<endl;
-  f_types_ << "if !ok {" <<endl;
-  f_types_ << "return errors.New(\"Scan value is not int64\")" <<endl;
-  f_types_ << "}" <<endl;
+  f_types_ << "func (p *" << tenum_name << ") Scan(value interface{}) error {" << '\n';
+  f_types_ << "v, ok := value.(int64)" << '\n';
+  f_types_ << "if !ok {" << '\n';
+  f_types_ << "return errors.New(\"Scan value is not int64\")" << '\n';
+  f_types_ << "}" << '\n';
   f_types_ << "*p = " << tenum_name << "(v)" << '\n';
   f_types_ << "return nil" << '\n';
   f_types_ << "}" << '\n' << '\n';
 
   // Generate Value for driver.Valuer interface
-  f_types_ << "func (p * " << tenum_name << ") Value() (driver.Value, error) {" <<endl;
+  f_types_ << "func (p * " << tenum_name << ") Value() (driver.Value, error) {" << '\n';
   f_types_ << "  if p == nil {" << '\n';
   f_types_ << "    return nil, nil" << '\n';
   f_types_ << "  }" << '\n';

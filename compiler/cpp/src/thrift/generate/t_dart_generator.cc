@@ -37,7 +37,7 @@ using std::string;
 using std::stringstream;
 using std::vector;
 
-static const string br = "\n"; // avoid ostream << std::endl flushes
+static const string br = "\n"; // Line break
 
 /**
  * Use the current Thrift version for static libraries.  When releasing, update
