@@ -618,7 +618,7 @@ void t_haxe_generator::render_struct_initializer(std::ostream& out,
 
   indent(out) << "return tmp;" << '\n';
   indent_down();
-  indent(out) << "})()";  // no endl
+  indent(out) << "})()";  // no line break
 }
 
 void t_haxe_generator::render_map_initializer(std::ostream& out,
@@ -643,7 +643,7 @@ void t_haxe_generator::render_map_initializer(std::ostream& out,
 
   indent(out) << "return tmp;" << '\n';
   indent_down();
-  indent(out) << "})()";  // no endl
+  indent(out) << "})()";  // no line break
 }
 
 void t_haxe_generator::render_list_initializer(std::ostream& out,
@@ -665,7 +665,7 @@ void t_haxe_generator::render_list_initializer(std::ostream& out,
 
   indent(out) << "return tmp;" << '\n';
   indent_down();
-  indent(out) << "})()";  // no endl
+  indent(out) << "})()";  // no line break
 }
 
 void t_haxe_generator::render_set_initializer(std::ostream& out,
@@ -687,7 +687,7 @@ void t_haxe_generator::render_set_initializer(std::ostream& out,
 
   indent(out) << "return tmp;" << '\n';
   indent_down();
-  indent(out) << "})()";  // no endl
+  indent(out) << "})()";  // no line break
 }
 
 

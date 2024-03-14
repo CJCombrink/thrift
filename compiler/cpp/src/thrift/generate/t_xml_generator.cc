@@ -39,9 +39,6 @@ using std::vector;
 using std::stack;
 using std::set;
 
-static const string endl = "\n";
-static const string quot = "\"";
-
 static const string default_ns_prefix = "http://thrift.apache.org/xml/ns/";
 
 /**

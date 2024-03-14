@@ -358,7 +358,7 @@ protected:
     }
     indent(out) << "/**" << '\n';
     indent_up();
-    // No endl -- comments reliably have a newline at the end.
+    // No line break -- comments reliably have a newline at the end.
     // This is true even for stuff like:
     //     /** method infos */ void foo(/** huh?*/ 1: i64 stuff)
     indent(out) << doc->get_doc();

@@ -42,8 +42,6 @@ using std::stringstream;
 using std::vector;
 using std::stack;
 
-static const string endl = "\n";
-static const string quot = "\"";
 static const bool NO_INDENT = false;
 static const bool FORCE_STRING = true;
 
@@ -471,7 +469,7 @@ void t_json_generator::generate_typedef(t_typedef* ttypedef) {
 }
 
 void t_json_generator::write_string(const string& value) {
-  f_json_ << quot << escape_json_string(value) << quot;
+  f_json_ << '\"' << escape_json_string(value) << '\"';
 }
 
 void t_json_generator::write_const_value(t_const_value* value, bool should_force_string) {
@@ -537,7 +535,7 @@ void t_json_generator::write_const_value(t_const_value* value, bool should_force
 }
 
 string t_json_generator::json_str(const string& str) {
-  return quot + escape_json_string(str) + quot;
+  return string("\"") + escape_json_string(str) + string("\n");
 }
 
 void t_json_generator::generate_constant(t_const* con) {

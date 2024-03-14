@@ -3749,14 +3749,14 @@ string t_netstd_generator::type_to_enum(t_type* type)
 
 void t_netstd_generator::generate_netstd_docstring_comment(ostream& out, string contents)
 {
-    docstring_comment(out, "/// <summary>" + endl, "/// ", contents, "/// </summary>" + endl);
+    docstring_comment(out, "/// <summary>" + string("\n"), "/// ", contents, "/// </summary>" + string("\n"));
 }
 
 void t_netstd_generator::generate_netstd_doc(ostream& out, t_field* field)
 {
     if (field->get_type()->is_enum())
     {
-        string combined_message = field->get_doc() + endl + "<seealso cref=\"" + get_enum_class_name(field->get_type()) + "\"/>";
+        string combined_message = field->get_doc() + "\n" + "<seealso cref=\"" + get_enum_class_name(field->get_type()) + "\"/>";
         generate_netstd_docstring_comment(out, combined_message);
     }
     else
@@ -3796,7 +3796,7 @@ void t_netstd_generator::generate_netstd_doc(ostream& out, t_function* tfunction
         docstring_comment(out,
                                    "",
                                    "/// ",
-                                   "<summary>" + endl + tfunction->get_doc() + "</summary>" + ps.str(),
+                                   "<summary>" + string("\n") + tfunction->get_doc() + "</summary>" + ps.str(),
                                    "");
     }
 }
