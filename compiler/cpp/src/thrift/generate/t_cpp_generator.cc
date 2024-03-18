@@ -2220,9 +2220,9 @@ void t_cpp_generator::generate_service(t_service* tservice) {
   f_header_ << '\n' << ns_open_ << '\n' << '\n';
 
   f_header_ << "#ifdef _MSC_VER" << '\n'
-               "  #pragma warning( push )" << '\n'
-               "  #pragma warning (disable : 4250 ) //inheriting methods via dominance " << '\n'
-               "#endif" << '\n' << '\n';
+            << "  #pragma warning( push )" << '\n'
+            << "  #pragma warning (disable : 4250 ) //inheriting methods via dominance " << '\n'
+            << "#endif" << '\n' << '\n';
 
   // Service implementation file includes
   string f_service_name = get_out_dir() + svcname + ".cpp";
@@ -2284,8 +2284,8 @@ void t_cpp_generator::generate_service(t_service* tservice) {
   }
 
   f_header_ << "#ifdef _MSC_VER" << '\n'
-               "  #pragma warning( pop )" << '\n'
-               "#endif" << '\n' << '\n';
+            << "  #pragma warning( pop )" << '\n'
+            << "#endif" << '\n' << '\n';
 
   // Close the namespace
   f_service_ << ns_close_ << '\n' << '\n';
@@ -2768,7 +2768,7 @@ void t_cpp_generator::generate_service_client(t_service* tservice, string style)
   string template_header, template_suffix, short_suffix, protocol_type, _this;
   string const prot_factory_type = "::apache::thrift::protocol::TProtocolFactory";
   if (gen_templates_) {
-    template_header = "template <class Protocol_>" << '\n';
+    template_header = "template <class Protocol_>\n";
     short_suffix = "T";
     template_suffix = "T<Protocol_>";
     protocol_type = "Protocol_";
@@ -2795,8 +2795,8 @@ void t_cpp_generator::generate_service_client(t_service* tservice, string style)
   // Generate the header portion
   if (style == "Concurrent") {
     f_header_ << "// The \'concurrent\' client is a thread safe client that correctly handles" << '\n'
-                 "// out of order responses.  It is slower than the regular client, so should" << '\n'
-                 "// only be used when you need to share a connection among multiple threads" << '\n';
+              << "// out of order responses.  It is slower than the regular client, so should" << '\n'
+              << "// only be used when you need to share a connection among multiple threads" << '\n';
   }
   f_header_ << template_header << "class " << service_name_ << style << "Client" << short_suffix
             << " : "
@@ -3435,7 +3435,7 @@ ProcessorGenerator::ProcessorGenerator(t_cpp_generator* generator,
   factory_class_name_ = class_name_ + "Factory";
 
   if (generator->gen_templates_) {
-    template_header_ = "template <class Protocol_>" << '\n';
+    template_header_ = "template <class Protocol_>\n";
     template_suffix_ = "<Protocol_>";
     typename_str_ = "typename ";
     class_name_ += "T";
@@ -4344,7 +4344,7 @@ void t_cpp_generator::generate_deserialize_field(ostream& out,
         << type_name(type, false, false, is_cpp17 == e_cpp17::YES) << ">(" << t << ");"
         << "" << '\n';
   } else {
-    printf("DO NOT KNOW HOW TO DESERIALIZE FIELD '%s' TYPE '%s'" << '\n',
+    printf("DO NOT KNOW HOW TO DESERIALIZE FIELD '%s' TYPE '%s'\n",
            tfield->get_name().c_str(),
            type_name(type).c_str());
   }
@@ -4566,7 +4566,7 @@ void t_cpp_generator::generate_serialize_field(ostream& out,
     }
     out << '\n';
   } else {
-    printf("DO NOT KNOW HOW TO SERIALIZE FIELD '%s' TYPE '%s'" << '\n',
+    printf("DO NOT KNOW HOW TO SERIALIZE FIELD '%s' TYPE '%s'\n",
            name.c_str(),
            type_name(type).c_str());
   }
@@ -5131,16 +5131,16 @@ std::string t_cpp_generator::display_name() const {
 THRIFT_REGISTER_GENERATOR(
     cpp,
     "C++",
-    "    cob_style:       Generate \"Continuation OBject\"-style classes." << '\n'
-    "    no_client_completion:" << '\n'
-    "                     Omit calls to completion__() in CobClient class." << '\n'
-    "    no_default_operators:" << '\n'
-    "                     Omits generation of default operators ==, != and <" << '\n'
-    "    templates:       Generate templatized reader/writer methods." << '\n'
-    "    pure_enums:      Generate pure enums instead of wrapper classes." << '\n'
-    "    include_prefix:  Use full include paths in generated files." << '\n'
-    "    moveable_types:  Generate move constructors and assignment operators." << '\n'
-    "    no_ostream_operators:" << '\n'
-    "                     Omit generation of ostream definitions." << '\n'
-    "    no_skeleton:     Omits generation of skeleton." << '\n'
-    "    cpp17:           Generate C++17 support along with old types." << '\n')
+    "    cob_style:       Generate \"Continuation OBject\"-style classes.\n"
+    "    no_client_completion:\n"
+    "                     Omit calls to completion__() in CobClient class.\n"
+    "    no_default_operators:\n"
+    "                     Omits generation of default operators ==, != and <\n"
+    "    templates:       Generate templatized reader/writer methods.\n"
+    "    pure_enums:      Generate pure enums instead of wrapper classes.\n"
+    "    include_prefix:  Use full include paths in generated files.\n"
+    "    moveable_types:  Generate move constructors and assignment operators.\n"
+    "    no_ostream_operators:\n"
+    "                     Omit generation of ostream definitions.\n"
+    "    no_skeleton:     Omits generation of skeleton.\n"
+    "    cpp17:           Generate C++17 support along with old types.\n")
