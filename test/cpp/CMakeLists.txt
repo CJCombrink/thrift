@@ -44,7 +44,6 @@ set(crosstestgencpp_SOURCES
     gen-cpp/SecondService.cpp
     gen-cpp/ThriftTest.cpp
     gen-cpp/ThriftTest_types.cpp
-    gen-cpp/ThriftTest_types_cpp17.cpp
     gen-cpp/ThriftTest_constants.cpp
     src/ThriftTest_extras.cpp
 )
@@ -106,10 +105,8 @@ add_custom_command(OUTPUT gen-cpp/SecondService.cpp
                           gen-cpp/ThriftTest.h
                           gen-cpp/ThriftTest_types.h
                           gen-cpp/ThriftTest_types.cpp
-                          gen-cpp/ThriftTest_types_cpp17.h
-                          gen-cpp/ThriftTest_types_cpp17.cpp
                           gen-cpp/ThriftTest_constants.cpp
-    COMMAND ${THRIFT_COMPILER} --gen cpp:templates,cob_style,cpp17 -r ${PROJECT_SOURCE_DIR}/test/v0.16/ThriftTest.thrift
+    COMMAND ${THRIFT_COMPILER} --gen cpp:templates,cob_style -r ${PROJECT_SOURCE_DIR}/test/v0.16/ThriftTest.thrift
 )
 
 add_custom_command(OUTPUT gen-cpp/Service.cpp

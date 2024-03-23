@@ -1723,7 +1723,7 @@ void t_cpp_generator::generate_struct_reader(ostream& out, t_struct* tstruct, bo
                   << "::read(::apache::thrift::protocol::TProtocol* iprot) {" << '\n';
     } else {
       out << indent() << "uint32_t read(::apache::thrift::protocol::TProtocol* iprot, " << tstruct->get_name()
-          << " &" << name << ");" << '\n' << '\n';
+          << " &" << name << ") {" << '\n';
     }
   }
   indent_up();
@@ -4292,13 +4292,15 @@ void t_cpp_generator::generate_deserialize_field(ostream& out,
 
   string name = prefix + tfield->get_name() + suffix;
 
+  if ((is_cpp17 == e_cpp17::YES) && (tfield->get_req() == t_field::T_OPTIONAL)) {
+    indent(out) << "auto& tmp = " << name << ".emplace(typename std::decay_t<decltype(" << name
+                << ")>::value_type{});" << '\n';
+    name = "tmp";
+  }
+
   if (type->is_struct() || type->is_xception()) {
     generate_deserialize_struct(out, (t_struct*)type, name, is_reference(tfield), is_cpp17);
   } else if (type->is_container()) {
-    if((is_cpp17 == e_cpp17::YES) && (tfield->get_req() == t_field::T_OPTIONAL)) {
-        indent(out) << "auto& tmp = " << name << ".emplace(typename std::decay_t<decltype(" << name<< ")>::value_type{});" << '\n';
-        name = "tmp";
-    }
     generate_deserialize_container(out, type, name, is_cpp17);
   } else if (type->is_base_type()) {
     indent(out) << "xfer += iprot->";

@@ -94,6 +94,26 @@ if(MSVC)
     set_property( TARGET UnitTests APPEND_STRING PROPERTY COMPILE_FLAGS /wd4503 )
 endif()
 
+# Check CPP17
+
+# ===============================================
+# Create the thrift C++ test library
+set(testgencpp17_SOURCES
+    gen-cpp/ThriftTest_types_cpp17.cpp
+    gen-cpp/ThriftTest_types_cpp17.h
+    gen-cpp/ThriftTest.cpp
+)
+
+add_library(testgencpp17 STATIC ${testgencpp17_SOURCES})
+
+add_executable(TestThriftTestClientCpp17
+    TestThriftTestClientCpp17.cpp)
+
+target_link_libraries(TestThriftTestClientCpp17 testgencpp ${Boost_LIBRARIES})
+target_link_libraries(TestThriftTestClientCpp17 thrift)
+add_test(NAME TestThriftTestClientCpp17 COMMAND TestThriftTestClientCpp17)
+add_definitions( -Wfatal-errors )
+# ===============================================
 
 set( TInterruptTest_SOURCES
      TSocketInterruptTest.cpp
@@ -384,7 +404,7 @@ add_custom_command(OUTPUT gen-cpp/Service.cpp gen-cpp/StressTest_types.cpp
 )
 
 add_custom_command(OUTPUT gen-cpp/SecondService.cpp gen-cpp/ThriftTest_constants.cpp gen-cpp/ThriftTest.cpp gen-cpp/ThriftTest_types.cpp gen-cpp/ThriftTest_types.h
-    COMMAND ${THRIFT_COMPILER} --gen cpp ${PROJECT_SOURCE_DIR}/test/v0.16/ThriftTest.thrift
+    COMMAND ${THRIFT_COMPILER} --gen cpp:cpp17 ${PROJECT_SOURCE_DIR}/test/v0.16/ThriftTest.thrift
 )
 
 add_custom_command(OUTPUT gen-cpp/OneWayService.cpp gen-cpp/OneWayTest_types.h gen-cpp/OneWayService.h
@@ -393,4 +413,8 @@ add_custom_command(OUTPUT gen-cpp/OneWayService.cpp gen-cpp/OneWayTest_types.h g
 
 add_custom_command(OUTPUT gen-cpp/ChildService.cpp gen-cpp/ChildService.h gen-cpp/ParentService.cpp gen-cpp/ParentService.h gen-cpp/proc_types.cpp gen-cpp/proc_types.h
     COMMAND ${THRIFT_COMPILER} --gen cpp:templates,cob_style,cpp17 ${CMAKE_CURRENT_SOURCE_DIR}/processor/proc.thrift
+)
+
+add_custom_command(OUTPUT ${testgencpp17_SOURCES}
+    COMMAND ${THRIFT_COMPILER} --gen cpp:cpp17 ${PROJECT_SOURCE_DIR}/test/v0.16/ThriftTest.thrift
 )
