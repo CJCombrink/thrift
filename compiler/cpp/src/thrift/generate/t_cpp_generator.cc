@@ -449,6 +449,7 @@ void t_cpp_generator::init_generator() {
            << "#include <thrift/Thrift.h>" << endl
            << "#include <thrift/TApplicationException.h>" << endl
            << "#include <thrift/TBase.h>" << endl
+           << "#include <thrift/TUuid.h>" << endl
            << "#include <thrift/protocol/TProtocol.h>" << endl
            << "#include <thrift/transport/TTransport.h>" << endl
            << endl;
@@ -4575,8 +4576,7 @@ string t_cpp_generator::base_type_name(t_base_type::t_base tbase) {
   case t_base_type::TYPE_DOUBLE:
     return "double";
   case t_base_type::TYPE_UUID:
-    // TODO: discuss possibility of a class TUuid;
-    return "std::string";
+    return "apache::thrift::TUuid";
   default:
     throw "compiler error: no C++ base type name for base type " + t_base_type::t_base_name(tbase);
   }
@@ -4617,9 +4617,7 @@ string t_cpp_generator::declare_field(t_field* tfield,
       switch (tbase) {
       case t_base_type::TYPE_VOID:
       case t_base_type::TYPE_STRING:
-        break;
       case t_base_type::TYPE_UUID:
-        result += " = std::string(\"00000000-0000-0000-0000-000000000000\")";
         break;
       case t_base_type::TYPE_BOOL:
         result += " = false";
@@ -4787,10 +4785,10 @@ bool t_cpp_generator::is_struct_storage_not_throwing(t_struct* tstruct) const {
       case t_base_type::TYPE_I32:
       case t_base_type::TYPE_I64:
       case t_base_type::TYPE_DOUBLE:
+      case t_base_type::TYPE_UUID:
         continue;
       case t_base_type::TYPE_VOID:
       case t_base_type::TYPE_STRING:
-      case t_base_type::TYPE_UUID:
       default:
         return false;
     }
