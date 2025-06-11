@@ -62,7 +62,7 @@ echo '' >> my.cfg
 
 echo
 echo step 1a
-winpty openssl req \
+openssl req \
 	-new \
 	-x509 \
 	-nodes  \
@@ -84,16 +84,16 @@ cat server.crt server.key > server.pem
 echo
 echo step 2
 echo 'Use "thrift" as password (without the quotes)'
-winpty openssl pkcs12 -export -clcerts -in server.crt -inkey server.key -out server.p12
+openssl pkcs12 -export -clcerts -in server.crt -inkey server.key -out server.p12
 
 echo
 echo step 3
-winpty openssl genrsa -out client.key
+openssl genrsa -out client.key
 
 
 echo
 echo step 4
-winpty openssl req \
+openssl req \
 	-new \
     -subj '//SKIP=this/CN=localhost/emailAddress=dev@thrift.apache.org/OU=Apache Thrift/O=The Apache Software Foundation/L=Forest Hill/ST=Maryland/C=US' \
 	-key client.key \
@@ -101,17 +101,17 @@ winpty openssl req \
 
 echo
 echo step 5
-winpty openssl x509 -req -days 3000 -in client.csr -CA CA.pem -CAkey server.key -set_serial 01 -out client.crt
+openssl x509 -req -days 3000 -in client.csr -CA CA.pem -CAkey server.key -set_serial 01 -out client.crt
 
 
 echo
 echo step 6
-winpty openssl pkcs12 -export -clcerts -in client.crt -inkey client.key -out client.p12
+openssl pkcs12 -export -clcerts -in client.crt -inkey client.key -out client.p12
 
 
 echo
 echo step 7
-winpty openssl pkcs12 -in client.p12 -out client.pem -clcerts
+openssl pkcs12 -in client.p12 -out client.pem -clcerts
 
 
 echo
@@ -120,7 +120,7 @@ openssl genrsa -out client_v3.key
 
 echo
 echo step 8b
-winpty openssl req \
+openssl req \
 	-new \
 	-subj '//SKIP=this/CN=localhost/emailAddress=dev@thrift.apache.org/OU=Apache Thrift/O=The Apache Software Foundation/L=Forest Hill/ST=Maryland/C=US' \
 	-key client_v3.key \
@@ -128,10 +128,10 @@ winpty openssl req \
 	-extensions v3_req \
 	-config my.cfg
 
-	
+
 echo
 echo step 9
-winpty openssl x509 -req -days 3000 -in client_v3.csr -CA CA.pem -CAkey server.key -set_serial 01 -out client_v3.crt -extensions v3_req -extfile my.cfg
+openssl x509 -req -days 3000 -in client_v3.csr -CA CA.pem -CAkey server.key -set_serial 01 -out client_v3.crt -extensions v3_req -extfile my.cfg
 
 echo
 echo cleanup
@@ -141,7 +141,7 @@ rm *.csr 2> /dev/null
 echo
 echo test
 openssl s_client -connect localhost:9090 &
-openssl s_server -accept 9090 -www 
+openssl s_server -accept 9090 -www
 
 echo
 echo done
