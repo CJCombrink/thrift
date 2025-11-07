@@ -39,10 +39,10 @@ option(BUILD_LIBRARIES "Build Thrift libraries" ON)
 # and enables the library if all are found. This means the default is to build as
 # much as possible but leaving out libraries if their dependencies are not met.
 
-if (NOT Boost_USE_STATIC_LIBS)
-    add_definitions(-DBOOST_ALL_DYN_LINK)
-    add_definitions(-DBOOST_TEST_DYN_LINK)
-endif()
+# if (NOT Boost_USE_STATIC_LIBS)
+#     add_definitions(-DBOOST_ALL_DYN_LINK)
+#     add_definitions(-DBOOST_TEST_DYN_LINK)
+# endif()
 
 # as3
 option(WITH_AS3 "Build ActionScript 3 Thrift Library" ON)
