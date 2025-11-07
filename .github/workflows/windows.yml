@@ -18,7 +18,9 @@ jobs:
       - name: System Packages
         shell: pwsh
         run: |
-          choco install ninja
+          choco install `
+            ninja `
+            jdk8
 
       # Conan is used due to its simplicity as a package manager
       - name: Install Conan
