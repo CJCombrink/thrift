@@ -53,7 +53,7 @@ jobs:
           $tools | ForEach-Object { $_ | Add-Content conanfile.txt }
 
           # Install dependencies
-          conan install . --build=missing --output-folder=build_cmake
+          conan install . --build=missing --output-folder=cmake_build
 
       - name: Build
         shell: pwsh
@@ -67,4 +67,4 @@ jobs:
       - name: Test
         shell: pwsh
         run: |
-          ctest --test-dir build_cmake --build-config Release --timeout 300 --extra-verbose
+          ctest --test-dir cmake_build --build-config Release --timeout 300 --extra-verbose
