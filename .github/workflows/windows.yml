@@ -24,6 +24,12 @@ jobs:
       - name: Install Conan
         uses: conan-io/setup-conan@v1
 
+      - name: Python setup
+        run: |
+          python -m pip install --upgrade pip setuptools wheel flake8 tornado twisted zope.interface
+          python --version
+          pip --version
+
       - name: Install dependencies
         shell: pwsh
         run: |
@@ -32,39 +38,33 @@ jobs:
             "boost/1.82.0",       `
             "openssl/[>=1.1 <4]", `
             "zlib/[>=1.2.11 <2]", `
-            "libevent/2.1.12",    `
-            "winflexbison/2.5.25")
-          $generators   = @("CMakeDeps", "CMakeToolchain")
+            "libevent/2.1.12"     `
+            )
+          $generators = @("CMakeDeps", "CMakeToolchain")
+          $tools = @("cmake/[>=3.16]", "winflexbison/2.5.25")
+
           "[requires]" | Out-File conanfile.txt
           $dependencies | ForEach-Object { $_ | Add-Content conanfile.txt }
+
           "`n[generators]" | Add-Content conanfile.txt
           $generators | ForEach-Object { $_ | Add-Content conanfile.txt }
+
+          "`n[tool_requires]" | Add-Content conanfile.txt
+          $tools | ForEach-Object { $_ | Add-Content conanfile.txt }
+
           # Install dependencies
           conan install . --build=missing --output-folder=build_cmake
 
       - name: Build
         shell: pwsh
         run: |
-          cmake --preset conan-default
+          cmake --preset conan-default `
+            -DBUILD_SHARED_LIBS=OFF `
+            -DWITH_NODEJS=OFF
+
           cmake --build --preset conan-release
 
-      # - name: Install dependencies
-      #   run: |
-      #     sudo apt-get update -yq
-      #     sudo apt-get install -y --no-install-recommends $BUILD_DEPS
-
-      # - name: Generate makefile using CMake
-      #   run: |
-      #     mkdir cmake_build
-      #     cd cmake_build
-      #     cmake .. -DBUILD_LIBRARIES=OFF
-
-      # - name: Run make
-      #   run: |
-      #     cd cmake_build
-      #     cmake --build .
-
-      # - name: Run test
-      #   run: |
-      #     cd cmake_build
-      #     ctest -j$(nproc)
+      - name: Test
+        shell: pwsh
+        run: |
+          ctest --test-dir build_cmake --build-config Release --timeout 300 --extra-verbose
