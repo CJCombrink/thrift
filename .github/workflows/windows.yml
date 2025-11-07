@@ -29,13 +29,13 @@ jobs:
         run: |
           # First set up the conanfile
           $dependencies = @("boost/1.82.0")
-          $generators   = @("cmake", "cmake_find_package")
+          $generators   = @("CMakeDeps", "CMakeToolchain")
           "[requires]" | Out-File conanfile.txt
           $dependencies | ForEach-Object { $_ | Add-Content conanfile.txt }
           "`n[generators]" | Add-Content conanfile.txt
           $generators | ForEach-Object { $_ | Add-Content conanfile.txt }
           # Install dependencies
-          conan install . --build=missing
+          conan install . --build=missing --output-folder=build_cmake
 
       - name: Build
         shell: pwsh
