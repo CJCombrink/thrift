@@ -30,3 +30,5 @@ def local_libpath():
     for libpath in glob.glob(globdir):
         if libpath.endswith('-%d.%d' % (sys.version_info[0], sys.version_info[1])):
             return libpath
+        if libpath.endswith('-%d%d' % (sys.version_info[0], sys.version_info[1])):
+            return libpath
