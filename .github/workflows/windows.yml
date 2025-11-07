@@ -28,7 +28,12 @@ jobs:
         shell: pwsh
         run: |
           # First set up the conanfile
-          $dependencies = @("boost/1.82.0")
+          $dependencies = @(      `
+            "boost/1.82.0",       `
+            "openssl/[>=1.1 <4]", `
+            "zlib/[>=1.2.11 <2]", `
+            "libevent/2.1.12",    `
+            "winflexbison/2.5.25")
           $generators   = @("CMakeDeps", "CMakeToolchain")
           "[requires]" | Out-File conanfile.txt
           $dependencies | ForEach-Object { $_ | Add-Content conanfile.txt }
