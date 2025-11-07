@@ -50,7 +50,7 @@ ext.thriftCompile = { Task task, String thriftFileName, String generator = 'java
 
     task.doLast {
         outputDir.mkdirs()
-        def result = exec {
+        def result = project.exec {
             executable file(thriftCompiler)
             args '--gen', generator
             args '-out', outputDir
