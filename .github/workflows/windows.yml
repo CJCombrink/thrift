@@ -1,4 +1,4 @@
-name: 'Build with CMake'
+name: 'Build on Windows'
 
 on:
   push:
@@ -34,10 +34,14 @@ jobs:
           $dependencies | ForEach-Object { $_ | Add-Content conanfile.txt }
           "`n[generators]" | Add-Content conanfile.txt
           $generators | ForEach-Object { $_ | Add-Content conanfile.txt }
-          # Set up conan
-          conan profile detect
           # Install dependencies
           conan install . --build=missing
+
+      - name: Build
+        shell: pwsh
+        run: |
+          cmake --preset conan-default
+          cmake --build --preset conan-release
 
       # - name: Install dependencies
       #   run: |
