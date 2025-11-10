@@ -50,7 +50,7 @@ ext.thriftCompile = { Task task, String thriftFileName, String generator = 'java
 
     task.doLast {
         outputDir.mkdirs()
-        def result = project.exec {
+        def result = exec {
             executable file(thriftCompiler)
             args '--gen', generator
             args '-out', outputDir
@@ -77,20 +77,21 @@ task generateJava(group: 'Build') {
     generate.dependsOn it
 
     ext.outputBuffer = new ByteArrayOutputStream()
-
-    thriftCompile(it, 'ThriftTest.thrift')
-    thriftCompile(it, 'JavaTypes.thrift')
-    thriftCompile(it, 'DebugProtoTest.thrift')
-    thriftCompile(it, 'DoubleConstantsTest.thrift')
-    thriftCompile(it, 'OptionalRequiredTest.thrift')
-    thriftCompile(it, 'ManyOptionals.thrift')
-    thriftCompile(it, 'JavaDeepCopyTest.thrift')
-    thriftCompile(it, 'EnumContainersTest.thrift')
-    thriftCompile(it, 'JavaBinaryDefault.thrift')
-    thriftCompile(it, 'VoidMethExceptionsTest.thrift')
-    thriftCompile(it, 'JavaAnnotationTest.thrift')
-    thriftCompile(it, 'partial/thrift_test_schema.thrift')
-    thriftCompile(it, 'FuzzTest.thrift')
+    doFirst {
+        thriftCompile(it, 'ThriftTest.thrift')
+        thriftCompile(it, 'JavaTypes.thrift')
+        thriftCompile(it, 'DebugProtoTest.thrift')
+        thriftCompile(it, 'DoubleConstantsTest.thrift')
+        thriftCompile(it, 'OptionalRequiredTest.thrift')
+        thriftCompile(it, 'ManyOptionals.thrift')
+        thriftCompile(it, 'JavaDeepCopyTest.thrift')
+        thriftCompile(it, 'EnumContainersTest.thrift')
+        thriftCompile(it, 'JavaBinaryDefault.thrift')
+        thriftCompile(it, 'VoidMethExceptionsTest.thrift')
+        thriftCompile(it, 'JavaAnnotationTest.thrift')
+        thriftCompile(it, 'partial/thrift_test_schema.thrift')
+        thriftCompile(it, 'FuzzTest.thrift')
+    }
 }
 
 task generateOptionalTypeJava(group: 'Build') {
