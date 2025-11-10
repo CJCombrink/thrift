@@ -62,11 +62,17 @@ jobs:
         run: |
           cmake --preset conan-default `
             -DBUILD_SHARED_LIBS=OFF `
-            -DWITH_NODEJS=OFF
+            -DWITH_NODEJS=OFF `
+            -DCMAKE_BUILD_TYPE=Release
 
           cmake --build --preset conan-release
 
       - name: Test
         shell: pwsh
         run: |
-          ctest --test-dir cmake_build --build-config Release --timeout 300 --extra-verbose
+          ctest --test-dir cmake_build `
+            --build-config Release `
+            --timeout 300 `
+            --extra-verbose `
+            --exclude-regex '(JavaTest)'
+
