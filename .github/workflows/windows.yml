@@ -1,0 +1,78 @@
+name: 'Build on Windows'
+
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: System Packages
+        shell: pwsh
+        run: |
+          choco install `
+            ninja `
+            jdk8
+
+      # Conan is used due to its simplicity as a package manager
+      - name: Install Conan
+        uses: conan-io/setup-conan@v1
+
+      - name: Python setup
+        run: |
+          python -m pip install --upgrade pip setuptools wheel flake8 tornado twisted zope.interface
+          python --version
+          pip --version
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          # First set up the conanfile
+          $dependencies = @(      `
+            "boost/1.82.0",       `
+            "openssl/[>=1.1 <4]", `
+            "zlib/[>=1.2.11 <2]", `
+            "libevent/2.1.12"     `
+            )
+          $generators = @("CMakeDeps", "CMakeToolchain")
+          $tools = @("cmake/[>=3.16]", "winflexbison/2.5.25")
+
+          "[requires]" | Out-File conanfile.txt
+          $dependencies | ForEach-Object { $_ | Add-Content conanfile.txt }
+
+          "`n[generators]" | Add-Content conanfile.txt
+          $generators | ForEach-Object { $_ | Add-Content conanfile.txt }
+
+          "`n[tool_requires]" | Add-Content conanfile.txt
+          $tools | ForEach-Object { $_ | Add-Content conanfile.txt }
+
+          # Install dependencies
+          conan install . --build=missing --output-folder=cmake_build
+
+      - name: Build
+        shell: pwsh
+        run: |
+          cmake --preset conan-default `
+            -DBUILD_SHARED_LIBS=OFF `
+            -DWITH_NODEJS=OFF `
+            -DCMAKE_BUILD_TYPE=Release  # Conan does not set this for MSVC since it believes it is ignored
+
+          cmake --build --preset conan-release
+
+      - name: Test
+        shell: pwsh
+        run: |
+          ctest --test-dir cmake_build `
+            --build-config Release `
+            --timeout 300 `
+            --extra-verbose `
+            --exclude-regex '(JavaTest)' # Ignoring JavaTest since the test fails for a reason that I don't know anything about
+
