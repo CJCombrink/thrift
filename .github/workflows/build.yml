@@ -634,9 +634,10 @@ jobs:
     strategy:
       matrix:
         # swift is currently broken and no maintainers around -> see THRIFT-5864
-        server_lang: ['java', 'kotlin', 'go', 'rs', 'cpp']   # ['java', 'kotlin', 'go', 'rs', 'swift']
+        # kotlin is failing to start: 'TestClientKt has been compiled by a more recent version of the Java Runtime (class file version 61.0), this version of the Java Runtime only recognizes class file versions up to 52.0'
+        server_lang: ['java', 'go', 'rs', 'cpp']
         # we always use comma join as many client langs as possible, to reduce the number of jobs
-        client_lang: ['java,kotlin', 'go,rs,cpp']    # ['java,kotlin', 'go,rs', 'swift']
+        client_lang: ['java,kotlin', 'go,rs,cpp,py']    # ['java,kotlin', 'go,rs', 'swift']
       fail-fast: false
     steps:
       - uses: actions/checkout@v5
