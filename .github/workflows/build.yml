@@ -471,7 +471,7 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.13" # Pin to 3.13 for now -> see THRIFT-5900
+          - "3.x"
       fail-fast: false
     steps:
       - uses: actions/checkout@v5
@@ -643,7 +643,7 @@ jobs:
 
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13" # Pin to 3.13 for now -> see THRIFT-5900
+          python-version: "3.x"
 
       - uses: actions/setup-java@v5
         with:
