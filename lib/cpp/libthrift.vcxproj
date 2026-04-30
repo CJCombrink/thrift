@@ -44,6 +44,7 @@
     <ClCompile Include="src\thrift\concurrency\ThreadManager.cpp" />
     <ClCompile Include="src\thrift\concurrency\TimerManager.cpp" />
     <ClCompile Include="src\thrift\processor\PeekProcessor.cpp" />
+    <ClCompile Include="src\thrift\processor\TMultiplexedProcessor.cpp" />
     <ClCompile Include="src\thrift\protocol\TBase64Utils.cpp" />
     <ClCompile Include="src\thrift\protocol\TDebugProtocol.cpp" />
     <ClCompile Include="src\thrift\protocol\TJSONProtocol.cpp" />

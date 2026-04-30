@@ -21,9 +21,7 @@
 #define THRIFT_TMULTIPLEXEDPROCESSOR_H_ 1
 
 #include <thrift/protocol/TProtocolDecorator.h>
-#include <thrift/TApplicationException.h>
 #include <thrift/TProcessor.h>
-#include <boost/tokenizer.hpp>
 
 namespace apache {
 namespace thrift {
@@ -98,40 +96,23 @@ public:
     *                         as "handlers", e.g. WeatherReportHandler,
     *                         implementing WeatherReportIf interface.
     */
-  void registerProcessor(const std::string& serviceName, std::shared_ptr<TProcessor> processor) {
-    services[serviceName] = processor;
-  }
+  void registerProcessor(const std::string& serviceName, std::shared_ptr<TProcessor> processor);
 
   /**
    * Register a service to be called to process queries without service name
    * \param [in] processor   Implementation of a service.
    */
-  void registerDefault(const std::shared_ptr<TProcessor>& processor) {
-    defaultProcessor = processor;
-  }
+  void registerDefault(const std::shared_ptr<TProcessor>& processor);
 
   /**
    * Chew up invalid input and return an exception to throw.
    */
   TException protocol_error(std::shared_ptr<protocol::TProtocol> in,
                             std::shared_ptr<protocol::TProtocol> out,
-                            const std::string& name, 
-                            int32_t seqid, 
-                            const std::string& msg) const {
-    in->skip(::apache::thrift::protocol::T_STRUCT);
-    in->readMessageEnd();
-    in->getTransport()->readEnd();
-    ::apache::thrift::TApplicationException
-      x(::apache::thrift::TApplicationException::PROTOCOL_ERROR,
-        "TMultiplexedProcessor: " + msg);
-    out->writeMessageBegin(name, ::apache::thrift::protocol::T_EXCEPTION, seqid);
-    x.write(out.get());
-    out->writeMessageEnd();
-    out->getTransport()->writeEnd();
-    out->getTransport()->flush();
-    return TException(msg);
-}
-   
+                            const std::string& name,
+                            int32_t seqid,
+                            const std::string& msg) const;
+
   /**
    * This implementation of <code>process</code> performs the following steps:
    *
@@ -149,71 +130,12 @@ public:
    */
   bool process(std::shared_ptr<protocol::TProtocol> in,
                std::shared_ptr<protocol::TProtocol> out,
-               void* connectionContext) override {
-    std::string name;
-    protocol::TMessageType type;
-    int32_t seqid;
-
-    // Use the actual underlying protocol (e.g. TBinaryProtocol) to read the
-    // message header.  This pulls the message "off the wire", which we'll
-    // deal with at the end of this method.
-    in->readMessageBegin(name, type, seqid);
-
-    if (type != protocol::T_CALL && type != protocol::T_ONEWAY) {
-      // Unexpected message type.
-      throw protocol_error(in, out, name, seqid, "Unexpected message type");
-    }
-
-    // Extract the service name
-    boost::tokenizer<boost::char_separator<char> > tok(name, boost::char_separator<char>(":"));
-
-    std::vector<std::string> tokens;
-    std::copy(tok.begin(), tok.end(), std::back_inserter(tokens));
-
-    // A valid message should consist of two tokens: the service
-    // name and the name of the method to call.
-    if (tokens.size() == 2) {
-      // Search for a processor associated with this service name.
-      auto it = services.find(tokens[0]);
-
-      if (it != services.end()) {
-        std::shared_ptr<TProcessor> processor = it->second;
-        // Let the processor registered for this service name
-        // process the message.
-        return processor
-            ->process(std::shared_ptr<protocol::TProtocol>(
-                          new protocol::StoredMessageProtocol(in, tokens[1], type, seqid)),
-                      out,
-                      connectionContext);
-      } else {
-        // Unknown service.
-        throw protocol_error(in, out, name, seqid, 
-            "Unknown service: " + tokens[0] +
-				". Did you forget to call registerProcessor()?");
-      }
-    } else if (tokens.size() == 1) {
-	  if (defaultProcessor) {
-        // non-multiplexed client forwards to default processor
-        return defaultProcessor            
-            ->process(std::shared_ptr<protocol::TProtocol>(
-                          new protocol::StoredMessageProtocol(in, tokens[0], type, seqid)),
-                      out,
-                      connectionContext);
-	  } else {
-		throw protocol_error(in, out, name, seqid,
-			"Non-multiplexed client request dropped. "
-			"Did you forget to call defaultProcessor()?");
-	  }
-    } else {
-		throw protocol_error(in, out, name, seqid,
-		    "Wrong number of tokens.");
-    }
-  }
+               void* connectionContext) override;
 
 private:
   /** Map of service processor objects, indexed by service names. */
   services_t services;
-  
+
   //! If a non-multi client requests something, it goes to the
   //! default processor (if one is defined) for backwards compatibility.
   std::shared_ptr<TProcessor> defaultProcessor;

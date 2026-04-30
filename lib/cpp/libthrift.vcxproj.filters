@@ -64,6 +64,9 @@
     <ClCompile Include="src\thrift\processor\PeekProcessor.cpp">
       <Filter>processor</Filter>
     </ClCompile>
+    <ClCompile Include="src\thrift\processor\TMultiplexedProcessor.cpp">
+      <Filter>processor</Filter>
+    </ClCompile>
     <ClCompile Include="src\thrift\transport\TServerSocket.cpp">
       <Filter>transport</Filter>
     </ClCompile>

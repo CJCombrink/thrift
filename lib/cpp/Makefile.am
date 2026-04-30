@@ -65,6 +65,7 @@ libthrift_la_SOURCES = src/thrift/TApplicationException.cpp \
                        src/thrift/concurrency/ThreadManager.cpp \
                        src/thrift/concurrency/TimerManager.cpp \
                        src/thrift/processor/PeekProcessor.cpp \
+                       src/thrift/processor/TMultiplexedProcessor.cpp \
                        src/thrift/protocol/TDebugProtocol.cpp \
                        src/thrift/protocol/TJSONProtocol.cpp \
                        src/thrift/protocol/TBase64Utils.cpp \
