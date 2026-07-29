@@ -109,6 +109,11 @@ public:
    */
   inline bool operator!=(const TUuid& other) const;
 
+  /**
+   * Lexicographic ordering over the raw 16-byte form (for use as map/set keys).
+   */
+  inline bool operator<(const TUuid& other) const;
+
   iterator begin() noexcept { return data_; }
   const_iterator begin() const noexcept { return data_; }
   iterator end() noexcept { return data_ + size(); }
@@ -156,6 +161,13 @@ inline bool TUuid::operator==(const TUuid& other) const {
  */
 inline bool TUuid::operator!=(const TUuid& other) const {
   return !(*this == other);
+}
+
+/**
+ * TUuid less-than comparison (lexicographic over the 16-byte storage)
+ */
+inline bool TUuid::operator<(const TUuid& other) const {
+  return std::lexicographical_compare(begin(), end(), other.begin(), other.end());
 }
 
 /**

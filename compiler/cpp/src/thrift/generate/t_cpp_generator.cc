@@ -5504,6 +5504,14 @@ void t_cpp_generator::generate_pure_union(std::ostream& out, t_struct* tstruct) 
     indent(out) << "}" << '\n';
   }
 
+  out << '\n';
+  indent(out) << "bool operator==(const " << tstruct->get_name()
+              << "& other) const { return value == other.value; }" << '\n';
+  indent(out) << "bool operator!=(const " << tstruct->get_name()
+              << "& other) const { return !(*this == other); }" << '\n';
+  indent(out) << "bool operator<(const " << tstruct->get_name()
+              << "& other) const { return value < other.value; }" << '\n';
+
   indent_down();
   indent(out) << "};" << '\n' << '\n';
 }
@@ -5529,16 +5537,50 @@ void t_cpp_generator::generate_pure_struct(std::ostream& out, t_struct* tstruct)
     indent(out) << pure_declare_field(*m_iter) << '\n';
   }
 
-  // Empty structs used as set/map keys need ordering (mirrors classic extras
-  // such as DebugProtoTest Empty::operator<).
+  // Comparison operators so pure types work as std::map/std::set keys
+  // (e.g. ThriftTest Insanity-as-map-key). Mirrors classic operator<.
+  out << '\n';
   if (members.empty()) {
-    out << '\n';
     indent(out) << "bool operator==(const " << tstruct->get_name()
                 << "&) const { return true; }" << '\n';
     indent(out) << "bool operator!=(const " << tstruct->get_name()
-                << "&) const { return false; }" << '\n';
+                << "& other) const { return !(*this == other); }" << '\n';
     indent(out) << "bool operator<(const " << tstruct->get_name()
                 << "&) const { return false; }" << '\n';
+  } else {
+    indent(out) << "bool operator==(const " << tstruct->get_name()
+                << "& other) const {" << '\n';
+    indent_up();
+    indent(out) << "return ";
+    bool first = true;
+    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+      if (!first) {
+        out << '\n' << indent() << "    && ";
+      }
+      first = false;
+      out << (*m_iter)->get_name() << " == other." << (*m_iter)->get_name();
+    }
+    out << ";" << '\n';
+    indent_down();
+    indent(out) << "}" << '\n';
+
+    indent(out) << "bool operator!=(const " << tstruct->get_name()
+                << "& other) const { return !(*this == other); }" << '\n';
+
+    indent(out) << "bool operator<(const " << tstruct->get_name()
+                << "& other) const {" << '\n';
+    indent_up();
+    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+      const string& n = (*m_iter)->get_name();
+      indent(out) << "if (" << n << " != other." << n << ") {" << '\n';
+      indent_up();
+      indent(out) << "return " << n << " < other." << n << ";" << '\n';
+      indent_down();
+      indent(out) << "}" << '\n';
+    }
+    indent(out) << "return false;" << '\n';
+    indent_down();
+    indent(out) << "}" << '\n';
   }
 
   indent_down();

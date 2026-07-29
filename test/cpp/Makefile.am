@@ -46,12 +46,17 @@ nodist_libtestgencpp_la_SOURCES = \
 	gen-cpp/ThriftTest_types.cpp \
 	gen-cpp/ThriftTest_types.h \
 	gen-cpp/ThriftTest_types.tcc \
+	gen-cpp/ThriftTest_types_pure.h \
+	gen-cpp/ThriftTest_types_pure_convert.cpp \
+	gen-cpp/ThriftTest_types_pure_convert.h \
 	gen-cpp/ThriftTest.cpp \
 	gen-cpp/ThriftTest.h \
 	gen-cpp/ThriftTest.tcc \
 	src/ThriftTest_extras.cpp
 
 libtestgencpp_la_LIBADD = $(top_builddir)/lib/cpp/libthrift.la
+# pure convert needs C++17 (std::optional / std::variant)
+libtestgencpp_la_CXXFLAGS = $(AM_CXXFLAGS) -std=c++17
 
 # Libraries for option-specific tests
 noinst_LTLIBRARIES += \
@@ -148,6 +153,9 @@ TestServer_LDADD = \
 TestClient_SOURCES = \
 	src/TestClient.cpp
 
+# pure convert + types_pure.h need C++17
+TestClient_CXXFLAGS = $(AM_CXXFLAGS) -std=c++17
+
 TestClient_LDADD = \
 	libtestgencpp.la \
 	$(top_builddir)/lib/cpp/libthrift.la \
@@ -213,8 +221,9 @@ PrivateOptionalTemplateStreamOpTest_LDADD = \
 #
 # Common thrift code generation rules
 #
-gen-cpp/ThriftTest.cpp gen-cpp/ThriftTest_types.cpp gen-cpp/ThriftTest_constants.cpp gen-cpp/SecondService.cpp gen-cpp/SecondService.h gen-cpp/SecondService.tcc: $(top_srcdir)/test/ThriftTest.thrift $(THRIFT)
-	$(THRIFT) --gen cpp:templates,cob_style -r $<
+# templates,cob_style for cross tests; pure adds types_pure.h + to_pure/from_pure convert
+gen-cpp/ThriftTest.cpp gen-cpp/ThriftTest_types.cpp gen-cpp/ThriftTest_constants.cpp gen-cpp/ThriftTest_types_pure.h gen-cpp/ThriftTest_types_pure_convert.cpp gen-cpp/ThriftTest_types_pure_convert.h gen-cpp/SecondService.cpp gen-cpp/SecondService.h gen-cpp/SecondService.tcc: $(top_srcdir)/test/ThriftTest.thrift $(THRIFT)
+	$(THRIFT) --gen cpp:templates,cob_style,pure -r $<
 
 # Generate ThriftTest with forward_setter option
 gen-cpp-forward/ThriftTest_types.cpp gen-cpp-forward/ThriftTest_types.h gen-cpp-forward/ThriftTest_types.tcc gen-cpp-forward/ThriftTest_constants.cpp: $(top_srcdir)/test/ThriftTest.thrift $(THRIFT)

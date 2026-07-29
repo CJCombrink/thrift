@@ -53,9 +53,11 @@ set(crosstestgencpp_SOURCES
     gen-cpp/ThriftTest.cpp
     gen-cpp/ThriftTest_types.cpp
     gen-cpp/ThriftTest_constants.cpp
+    gen-cpp/ThriftTest_types_pure_convert.cpp
     src/ThriftTest_extras.cpp
 )
 add_library(crosstestgencpp STATIC ${crosstestgencpp_SOURCES})
+target_compile_features(crosstestgencpp PUBLIC cxx_std_17)
 target_link_libraries(crosstestgencpp thrift)
 
 set(crossstressgencpp_SOURCES
@@ -77,6 +79,7 @@ target_link_libraries(TestServer thriftnb)
 target_link_libraries(TestServer thriftz)
 
 add_executable(TestClient src/TestClient.cpp)
+target_compile_features(TestClient PRIVATE cxx_std_17)
 target_link_libraries(TestClient crosstestgencpp ${Boost_LIBRARIES})
 target_link_libraries(TestClient thriftnb)
 target_link_libraries(TestClient thriftz)

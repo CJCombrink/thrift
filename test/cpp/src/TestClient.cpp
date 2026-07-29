@@ -54,6 +54,7 @@
 
 #include "SecondService.h"
 #include "ThriftTest.h"
+#include "ThriftTest_types_pure_convert.h"
 
 using namespace std;
 using namespace apache::thrift;
@@ -200,7 +201,514 @@ BOOST_CONSTEXPR_OR_CONST int ERR_BASETYPES = 1;
 BOOST_CONSTEXPR_OR_CONST int ERR_STRUCTS = 2;
 BOOST_CONSTEXPR_OR_CONST int ERR_CONTAINERS = 4;
 BOOST_CONSTEXPR_OR_CONST int ERR_EXCEPTIONS = 8;
+BOOST_CONSTEXPR_OR_CONST int ERR_PURE = 16;
 BOOST_CONSTEXPR_OR_CONST int ERR_UNKNOWN = 64;
+
+// ---------------------------------------------------------------------------
+// Shared fixtures + validation for classic vs pure RPC paths
+//
+// Flow for pure tests:
+//   1. Build classic values (same fixtures as the classic path)
+//   2. Round-trip through to_pure/from_pure (identity check)
+//   3. Call the existing server with classic types
+//   4. Re-use the same validation against the response
+//   5. Confirm the response also survives pure conversion
+// ---------------------------------------------------------------------------
+
+static Xtruct make_test_xtruct() {
+  Xtruct out;
+  out.string_thing = "Zero";
+  out.byte_thing = 1;
+  out.i32_thing = -3;
+  out.i64_thing = -5;
+  return out;
+}
+
+static bool validate_xtruct_eq(const Xtruct& expected,
+                               const Xtruct& actual,
+                               const char* path) {
+  printf(" = {\"%s\", %d, %d, %" PRId64 "} [%s]\n",
+         actual.string_thing.c_str(),
+         (int)actual.byte_thing,
+         actual.i32_thing,
+         actual.i64_thing,
+         path);
+  if (actual != expected) {
+    cout << "*** FAILED *** (" << path << ")" << '\n';
+    return false;
+  }
+  return true;
+}
+
+static bool validate_xtruct2_eq(const Xtruct2& expected,
+                                const Xtruct2& actual,
+                                const char* path) {
+  const Xtruct& in = actual.struct_thing;
+  printf(" = {%d, {\"%s\", %d, %d, %" PRId64 "}, %d} [%s]\n",
+         actual.byte_thing,
+         in.string_thing.c_str(),
+         (int)in.byte_thing,
+         in.i32_thing,
+         in.i64_thing,
+         actual.i32_thing,
+         path);
+  if (actual != expected) {
+    cout << "*** FAILED *** (" << path << ")" << '\n';
+    return false;
+  }
+  return true;
+}
+
+static bool pure_identity(const Xtruct& v, const char* what) {
+  Xtruct round = from_pure(to_pure(v));
+  if (round != v) {
+    cout << "*** FAILED *** pure identity convert for " << what << '\n';
+    return false;
+  }
+  return true;
+}
+
+static bool pure_identity(const Xtruct2& v, const char* what) {
+  Xtruct2 round = from_pure(to_pure(v));
+  if (round != v) {
+    cout << "*** FAILED *** pure identity convert for " << what << '\n';
+    return false;
+  }
+  return true;
+}
+
+static bool pure_identity(const Insanity& v, const char* what) {
+  Insanity round = from_pure(to_pure(v));
+  if (round != v) {
+    cout << "*** FAILED *** pure identity convert for " << what << '\n';
+    return false;
+  }
+  return true;
+}
+
+static bool pure_identity(const Xception& v, const char* what) {
+  Xception round = from_pure(to_pure(v));
+  if (round.errorCode != v.errorCode || round.message != v.message) {
+    cout << "*** FAILED *** pure identity convert for " << what << '\n';
+    return false;
+  }
+  return true;
+}
+
+// Shared Insanity response checks (classic and pure paths).
+static bool validate_insanity_result(const map<UserId, map<Numberz::type, Insanity> >& whoa,
+                                     const Insanity& insane,
+                                     const char* path) {
+  bool failed = false;
+  map<UserId, map<Numberz::type, Insanity> >::const_iterator it1 = whoa.find(UserId(1));
+  if (whoa.size() != 2) {
+    failed = true;
+  }
+  if (it1 == whoa.end()) {
+    failed = true;
+  } else {
+    auto it12 = it1->second.find(Numberz::TWO);
+    if (it12 == it1->second.end() || it12->second != insane) {
+      failed = true;
+    }
+    auto it13 = it1->second.find(Numberz::THREE);
+    if (it13 == it1->second.end() || it13->second != insane) {
+      failed = true;
+    }
+  }
+  map<UserId, map<Numberz::type, Insanity> >::const_iterator it2 = whoa.find(UserId(2));
+  if (it2 == whoa.end()) {
+    failed = true;
+  } else {
+    auto it26 = it2->second.find(Numberz::SIX);
+    if (it26 == it2->second.end() || it26->second != Insanity()) {
+      failed = true;
+    }
+  }
+  if (failed) {
+    cout << "*** FAILED *** (" << path << ")" << '\n';
+  }
+  return !failed;
+}
+
+static void print_insanity_result(const map<UserId, map<Numberz::type, Insanity> >& whoa) {
+  cout << " = {";
+  map<UserId, map<Numberz::type, Insanity> >::const_iterator i_iter;
+  for (i_iter = whoa.begin(); i_iter != whoa.end(); ++i_iter) {
+    printf("%" PRId64 " => {", i_iter->first);
+    map<Numberz::type, Insanity>::const_iterator i2_iter;
+    for (i2_iter = i_iter->second.begin(); i2_iter != i_iter->second.end(); ++i2_iter) {
+      printf("%d => {", i2_iter->first);
+      map<Numberz::type, UserId> userMap = i2_iter->second.userMap;
+      map<Numberz::type, UserId>::const_iterator um;
+      cout << "{";
+      for (um = userMap.begin(); um != userMap.end(); ++um) {
+        cout << um->first << " => " << um->second;
+      }
+      cout << "}, ";
+
+      vector<Xtruct> xtructs = i2_iter->second.xtructs;
+      vector<Xtruct>::const_iterator x;
+      cout << "{";
+      for (x = xtructs.begin(); x != xtructs.end(); ++x) {
+        printf("{\"%s\", %d, %d, %" PRId64 "}, ",
+               x->string_thing.c_str(),
+               (int)x->byte_thing,
+               x->i32_thing,
+               x->i64_thing);
+      }
+      cout << "}";
+
+      cout << "}, ";
+    }
+    cout << "}, ";
+  }
+  cout << "}" << '\n';
+}
+
+/**
+ * Run one RPC with an Xtruct argument twice: classic then pure-converted.
+ * Uses the same validate_xtruct_eq for both paths.
+ */
+static int run_struct_tests(ThriftTestClient& testClient) {
+  int rc = 0;
+  const Xtruct fixture = make_test_xtruct();
+
+  // Classic path
+  {
+    cout << "testStruct({\"Zero\", 1, -3, -5}) classic" << flush;
+    Xtruct in;
+    testClient.testStruct(in, fixture);
+    if (!validate_xtruct_eq(fixture, in, "classic")) {
+      rc |= ERR_STRUCTS;
+    }
+  }
+
+  // Pure path: same fixture via pure convert, same validation
+  {
+    cout << "testStruct({\"Zero\", 1, -3, -5}) pure" << flush;
+    if (!pure_identity(fixture, "Xtruct request")) {
+      rc |= ERR_PURE;
+    }
+    Xtruct request = from_pure(to_pure(fixture));
+    Xtruct in;
+    testClient.testStruct(in, request);
+    if (!validate_xtruct_eq(request, in, "pure")) {
+      rc |= ERR_STRUCTS;
+    }
+    if (!pure_identity(in, "Xtruct response")) {
+      rc |= ERR_PURE;
+    }
+  }
+
+  return rc;
+}
+
+static int run_nest_tests(ThriftTestClient& testClient, const Xtruct& inner) {
+  int rc = 0;
+  Xtruct2 fixture;
+  fixture.byte_thing = 1;
+  fixture.struct_thing = inner;
+  fixture.i32_thing = 5;
+
+  {
+    cout << "testNest({1, {\"Zero\", 1, -3, -5}), 5} classic" << flush;
+    Xtruct2 in2;
+    testClient.testNest(in2, fixture);
+    if (!validate_xtruct2_eq(fixture, in2, "classic")) {
+      rc |= ERR_STRUCTS;
+    }
+  }
+
+  {
+    cout << "testNest({1, {\"Zero\", 1, -3, -5}), 5} pure" << flush;
+    if (!pure_identity(fixture, "Xtruct2 request")) {
+      rc |= ERR_PURE;
+    }
+    Xtruct2 request = from_pure(to_pure(fixture));
+    Xtruct2 in2;
+    testClient.testNest(in2, request);
+    if (!validate_xtruct2_eq(request, in2, "pure")) {
+      rc |= ERR_STRUCTS;
+    }
+    if (!pure_identity(in2, "Xtruct2 response")) {
+      rc |= ERR_PURE;
+    }
+  }
+
+  return rc;
+}
+
+static Insanity make_test_insanity() {
+  Insanity insane;
+  insane.userMap.insert(make_pair(Numberz::FIVE, 5));
+  insane.userMap.insert(make_pair(Numberz::EIGHT, 8));
+  Xtruct truck;
+  truck.string_thing = "Goodbye4";
+  truck.byte_thing = 4;
+  truck.i32_thing = 4;
+  truck.i64_thing = 4;
+  Xtruct truck2;
+  truck2.string_thing = "Hello2";
+  truck2.byte_thing = 2;
+  truck2.i32_thing = 2;
+  truck2.i64_thing = 2;
+  insane.xtructs.push_back(truck);
+  insane.xtructs.push_back(truck2);
+  return insane;
+}
+
+static int run_insanity_tests(ThriftTestClient& testClient) {
+  int rc = 0;
+  const Insanity fixture = make_test_insanity();
+
+  {
+    cout << "testInsanity() classic" << flush;
+    map<UserId, map<Numberz::type, Insanity> > whoa;
+    testClient.testInsanity(whoa, fixture);
+    print_insanity_result(whoa);
+    if (!validate_insanity_result(whoa, fixture, "classic")) {
+      rc |= ERR_STRUCTS;
+    }
+  }
+
+  {
+    cout << "testInsanity() pure" << flush;
+    if (!pure_identity(fixture, "Insanity request")) {
+      rc |= ERR_PURE;
+    }
+    Insanity request = from_pure(to_pure(fixture));
+    map<UserId, map<Numberz::type, Insanity> > whoa;
+    testClient.testInsanity(whoa, request);
+    print_insanity_result(whoa);
+    if (!validate_insanity_result(whoa, request, "pure")) {
+      rc |= ERR_STRUCTS;
+    }
+    // Nested values in the response should convert cleanly as well.
+    for (map<UserId, map<Numberz::type, Insanity> >::const_iterator it = whoa.begin();
+         it != whoa.end();
+         ++it) {
+      for (map<Numberz::type, Insanity>::const_iterator it2 = it->second.begin();
+           it2 != it->second.end();
+           ++it2) {
+        if (!pure_identity(it2->second, "Insanity response entry")) {
+          rc |= ERR_PURE;
+        }
+      }
+    }
+  }
+
+  return rc;
+}
+
+static int run_multi_tests(ThriftTestClient& testClient) {
+  int rc = 0;
+  map<int16_t, string> mul_map;
+  mul_map[1] = "blah";
+  mul_map[2] = "thing";
+
+  Xtruct expected;
+  expected.string_thing = "Hello2";
+  expected.byte_thing = 42;
+  expected.i32_thing = 4242;
+  expected.i64_thing = 424242;
+
+  {
+    cout << "testMulti() classic" << '\n';
+    try {
+      Xtruct mul_result;
+      testClient.testMulti(mul_result, 42, 4242, 424242, mul_map, Numberz::EIGHT, UserId(24));
+      if (!validate_xtruct_eq(expected, mul_result, "classic")) {
+        rc |= ERR_STRUCTS;
+      }
+    } catch (TTransportException&) {
+      throw;
+    } catch (exception& ex) {
+      cout << "*** FAILED *** (classic)\n" << ex.what() << '\n';
+      rc |= ERR_STRUCTS;
+    }
+  }
+
+  {
+    cout << "testMulti() pure" << '\n';
+    try {
+      // Enum args through pure convert (UserId is a typedef of i64 — identity)
+      Numberz::type arg_enum = from_pure(to_pure(Numberz::EIGHT));
+      UserId arg_uid = UserId(24);
+      if (arg_enum != Numberz::EIGHT) {
+        cout << "*** FAILED *** pure convert for enum arg" << '\n';
+        rc |= ERR_PURE;
+      }
+      Xtruct mul_result;
+      testClient.testMulti(mul_result, 42, 4242, 424242, mul_map, arg_enum, arg_uid);
+      if (!validate_xtruct_eq(expected, mul_result, "pure")) {
+        rc |= ERR_STRUCTS;
+      }
+      if (!pure_identity(mul_result, "testMulti response")) {
+        rc |= ERR_PURE;
+      }
+    } catch (TTransportException&) {
+      throw;
+    } catch (exception& ex) {
+      cout << "*** FAILED *** (pure)\n" << ex.what() << '\n';
+      rc |= ERR_STRUCTS;
+    }
+  }
+
+  return rc;
+}
+
+static int run_exception_tests(ThriftTestClient& testClient) {
+  int rc = 0;
+
+  /* test exception */
+  try {
+    cout << "testClient.testException(\"Xception\") classic =>" << flush;
+    testClient.testException("Xception");
+    cout << "  void\n*** FAILED ***" << '\n';
+    rc |= ERR_EXCEPTIONS;
+  } catch (Xception& e) {
+    printf("  {%u, \"%s\"}\n", e.errorCode, e.message.c_str());
+    if (!pure_identity(e, "Xception classic")) {
+      rc |= ERR_PURE;
+    }
+  }
+
+  try {
+    cout << "testClient.testException(\"Xception\") pure-check =>" << flush;
+    testClient.testException("Xception");
+    cout << "  void\n*** FAILED ***" << '\n';
+    rc |= ERR_EXCEPTIONS;
+  } catch (Xception& e) {
+    // Catch as classic, convert to pure and back, re-validate fields
+    pure::Xception pe = to_pure(e);
+    Xception again = from_pure(pe);
+    printf("  pure {%u, \"%s\"}\n", again.errorCode, again.message.c_str());
+    if (again.errorCode != e.errorCode || again.message != e.message) {
+      cout << "*** FAILED *** pure exception convert" << '\n';
+      rc |= ERR_PURE;
+    }
+  }
+
+  try {
+    cout << "testClient.testException(\"TException\") =>" << flush;
+    testClient.testException("TException");
+    cout << "  void\n*** FAILED ***" << '\n';
+    rc |= ERR_EXCEPTIONS;
+  } catch (const TException&) {
+    cout << "  Caught TException" << '\n';
+  }
+
+  try {
+    cout << "testClient.testException(\"success\") =>" << flush;
+    testClient.testException("success");
+    cout << "  void" << '\n';
+  } catch (exception& ex) {
+    cout << "*** FAILED ***" << '\n' << ex.what() << '\n';
+    rc |= ERR_EXCEPTIONS;
+  }
+
+  /* test multi exception */
+  try {
+    cout << "testClient.testMultiException(\"Xception\", \"test 1\") classic =>" << flush;
+    Xtruct result;
+    testClient.testMultiException(result, "Xception", "test 1");
+    cout << "  result\n*** FAILED ***" << '\n';
+    rc |= ERR_EXCEPTIONS;
+  } catch (Xception& e) {
+    printf("  {%u, \"%s\"}\n", e.errorCode, e.message.c_str());
+    if (!pure_identity(e, "Xception multi")) {
+      rc |= ERR_PURE;
+    }
+  }
+
+  try {
+    cout << "testClient.testMultiException(\"Xception2\", \"test 2\") classic =>" << flush;
+    Xtruct result;
+    testClient.testMultiException(result, "Xception2", "test 2");
+    cout << "  result\n*** FAILED ***" << '\n';
+    rc |= ERR_EXCEPTIONS;
+  } catch (Xception2& e) {
+    printf("  {%u, {\"%s\"}}\n", e.errorCode, e.struct_thing.string_thing.c_str());
+    Xception2 again = from_pure(to_pure(e));
+    if (again.errorCode != e.errorCode
+        || again.struct_thing.string_thing != e.struct_thing.string_thing) {
+      cout << "*** FAILED *** pure Xception2 convert" << '\n';
+      rc |= ERR_PURE;
+    }
+  }
+
+  try {
+    cout << "testClient.testMultiException(\"success\", \"test 3\") classic =>" << flush;
+    Xtruct result;
+    testClient.testMultiException(result, "success", "test 3");
+    printf("  {{\"%s\"}}\n", result.string_thing.c_str());
+    if (!pure_identity(result, "multi success result")) {
+      rc |= ERR_PURE;
+    }
+  } catch (exception& ex) {
+    cout << "*** FAILED ***" << '\n' << ex.what() << '\n';
+    rc |= ERR_EXCEPTIONS;
+  }
+
+  // Pure path for success multi-exception: args unchanged, result through pure
+  try {
+    cout << "testClient.testMultiException(\"success\", \"test 3\") pure =>" << flush;
+    Xtruct result;
+    testClient.testMultiException(result, "success", "test 3");
+    Xtruct via_pure = from_pure(to_pure(result));
+    printf("  pure {{\"%s\"}}\n", via_pure.string_thing.c_str());
+    if (via_pure.string_thing != result.string_thing) {
+      cout << "*** FAILED *** pure multi success" << '\n';
+      rc |= ERR_PURE;
+    }
+  } catch (exception& ex) {
+    cout << "*** FAILED *** (pure)\n" << ex.what() << '\n';
+    rc |= ERR_EXCEPTIONS;
+  }
+
+  return rc;
+}
+
+static int run_enum_typedef_pure_tests(ThriftTestClient& testClient) {
+  int rc = 0;
+
+  Numberz::type values[] = {Numberz::ONE,
+                            Numberz::TWO,
+                            Numberz::THREE,
+                            Numberz::FIVE,
+                            Numberz::EIGHT};
+  for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
+    Numberz::type sent = from_pure(to_pure(values[i]));
+    if (sent != values[i]) {
+      cout << "*** FAILED *** pure Numberz convert " << values[i] << '\n';
+      rc |= ERR_PURE;
+      continue;
+    }
+    cout << "testEnum pure(" << values[i] << ")" << flush;
+    Numberz::type ret = testClient.testEnum(sent);
+    cout << " = " << ret << '\n';
+    if (ret != values[i]) {
+      cout << "*** FAILED ***" << '\n';
+      rc |= ERR_STRUCTS;
+    }
+    if (from_pure(to_pure(ret)) != values[i]) {
+      cout << "*** FAILED *** pure enum response convert" << '\n';
+      rc |= ERR_PURE;
+    }
+  }
+
+  // UserId is typedef i64 in pure as well — re-run classic typedef RPC after enum pure tests
+  cout << "testTypedef(309858235082523) after pure enum tests" << flush;
+  UserId uid = testClient.testTypedef(309858235082523LL);
+  cout << " = " << uid << '\n';
+  if (uid != 309858235082523LL) {
+    cout << "*** FAILED ***" << '\n';
+    rc |= ERR_STRUCTS;
+  }
+
+  return rc;
+}
 
 int main(int argc, char** argv) {
   cout.precision(19);
@@ -679,48 +1187,10 @@ int main(int argc, char** argv) {
     UUID_TEST(testUuid, TUuid{}, TUuid{"00000000-0000-0000-0000-000000000000"});
 
     /**
-     * STRUCT TEST
+     * STRUCT / NESTED STRUCT TESTS (classic path, then pure convert path)
      */
-    cout << "testStruct({\"Zero\", 1, -3, -5})" << flush;
-    Xtruct out;
-    out.string_thing = "Zero";
-    out.byte_thing = 1;
-    out.i32_thing = -3;
-    out.i64_thing = -5;
-    Xtruct in;
-    testClient.testStruct(in, out);
-    printf(" = {\"%s\", %d, %d, %" PRId64 "}\n",
-           in.string_thing.c_str(),
-           (int)in.byte_thing,
-           in.i32_thing,
-           in.i64_thing);
-    if (in != out) {
-      cout << "*** FAILED ***" << '\n';
-      return_code |= ERR_STRUCTS;
-    }
-
-    /**
-     * NESTED STRUCT TEST
-     */
-    cout << "testNest({1, {\"Zero\", 1, -3, -5}), 5}" << flush;
-    Xtruct2 out2;
-    out2.byte_thing = 1;
-    out2.struct_thing = out;
-    out2.i32_thing = 5;
-    Xtruct2 in2;
-    testClient.testNest(in2, out2);
-    in = in2.struct_thing;
-    printf(" = {%d, {\"%s\", %d, %d, %" PRId64 "}, %d}\n",
-           in2.byte_thing,
-           in.string_thing.c_str(),
-           (int)in.byte_thing,
-           in.i32_thing,
-           in.i64_thing,
-           in2.i32_thing);
-    if (in2 != out2) {
-      cout << "*** FAILED ***" << '\n';
-      return_code |= ERR_STRUCTS;
-    }
+    return_code |= run_struct_tests(testClient);
+    return_code |= run_nest_tests(testClient, make_test_xtruct());
 
     /**
      * MAP TEST
@@ -887,7 +1357,7 @@ int main(int argc, char** argv) {
     }
 
     /**
-     * ENUM TEST
+     * ENUM TEST (classic)
      */
     cout << "testEnum(ONE)" << flush;
     Numberz::type ret = testClient.testEnum(Numberz::ONE);
@@ -930,7 +1400,7 @@ int main(int argc, char** argv) {
     }
 
     /**
-     * TYPEDEF TEST
+     * TYPEDEF TEST (classic)
      */
     cout << "testTypedef(309858235082523)" << flush;
     UserId uid = testClient.testTypedef(309858235082523LL);
@@ -939,6 +1409,11 @@ int main(int argc, char** argv) {
       cout << "*** FAILED ***" << '\n';
       return_code |= ERR_STRUCTS;
     }
+
+    /**
+     * ENUM / TYPEDEF pure convert path (same RPCs, args/results via pure)
+     */
+    return_code |= run_enum_typedef_pure_tests(testClient);
 
     /**
      * NESTED MAP TEST
@@ -971,180 +1446,21 @@ int main(int argc, char** argv) {
     }
 
     /**
-     * INSANITY TEST
+     * INSANITY TEST (classic then pure — shared validation)
      */
     if (!noinsane) {
-      Insanity insane;
-      insane.userMap.insert(make_pair(Numberz::FIVE, 5));
-      insane.userMap.insert(make_pair(Numberz::EIGHT, 8));
-      Xtruct truck;
-      truck.string_thing = "Goodbye4";
-      truck.byte_thing = 4;
-      truck.i32_thing = 4;
-      truck.i64_thing = 4;
-      Xtruct truck2;
-      truck2.string_thing = "Hello2";
-      truck2.byte_thing = 2;
-      truck2.i32_thing = 2;
-      truck2.i64_thing = 2;
-      insane.xtructs.push_back(truck);
-      insane.xtructs.push_back(truck2);
-      cout << "testInsanity()" << flush;
-      map<UserId, map<Numberz::type, Insanity> > whoa;
-      testClient.testInsanity(whoa, insane);
-      cout << " = {";
-      map<UserId, map<Numberz::type, Insanity> >::const_iterator i_iter;
-      for (i_iter = whoa.begin(); i_iter != whoa.end(); ++i_iter) {
-        printf("%" PRId64 " => {", i_iter->first);
-        map<Numberz::type, Insanity>::const_iterator i2_iter;
-        for (i2_iter = i_iter->second.begin(); i2_iter != i_iter->second.end(); ++i2_iter) {
-          printf("%d => {", i2_iter->first);
-          map<Numberz::type, UserId> userMap = i2_iter->second.userMap;
-          map<Numberz::type, UserId>::const_iterator um;
-          cout << "{";
-          for (um = userMap.begin(); um != userMap.end(); ++um) {
-            cout << um->first << " => " << um->second;
-          }
-          cout << "}, ";
-
-          vector<Xtruct> xtructs = i2_iter->second.xtructs;
-          vector<Xtruct>::const_iterator x;
-          cout << "{";
-          for (x = xtructs.begin(); x != xtructs.end(); ++x) {
-            printf("{\"%s\", %d, %d, %" PRId64 "}, ",
-                   x->string_thing.c_str(),
-                   (int)x->byte_thing,
-                   x->i32_thing,
-                   x->i64_thing);
-          }
-          cout << "}";
-
-          cout << "}, ";
-        }
-        cout << "}, ";
-      }
-      cout << "}" << '\n';
-      bool failed = false;
-      map<UserId, map<Numberz::type, Insanity> >::const_iterator it1 = whoa.find(UserId(1));
-      if (whoa.size() != 2) {
-        failed = true;
-      }
-      if (it1 == whoa.end()) {
-        failed = true;
-      } else {
-        auto it12 = it1->second.find(Numberz::TWO);
-        if (it12 == it1->second.end() || it12->second != insane) {
-          failed = true;
-        }
-        auto it13 = it1->second.find(Numberz::THREE);
-        if (it13 == it1->second.end() || it13->second != insane) {
-          failed = true;
-        }
-      }
-      map<UserId, map<Numberz::type, Insanity> >::const_iterator it2 = whoa.find(UserId(2));
-      if (it2 == whoa.end()) {
-        failed = true;
-      } else {
-        auto it26 = it2->second.find(Numberz::SIX);
-        if (it26 == it2->second.end() || it26->second != Insanity()) {
-          failed = true;
-        }
-      }
-      if (failed) {
-        cout << "*** FAILED ***" << '\n';
-        return_code |= ERR_STRUCTS;
-      }
+      return_code |= run_insanity_tests(testClient);
     }
 
     /**
-     * MULTI TEST
+     * MULTI TEST (classic then pure — shared validation)
      */
-    cout << "testMulti()" << '\n';
-    try {
-      map<int16_t, string> mul_map;
-      Xtruct mul_result;
-      mul_map[1] = "blah";
-      mul_map[2] = "thing";
-      testClient.testMulti(mul_result, 42, 4242, 424242, mul_map, Numberz::EIGHT, UserId(24));
-      Xtruct xxs;
-      xxs.string_thing = "Hello2";
-      xxs.byte_thing = 42;
-      xxs.i32_thing = 4242;
-      xxs.i64_thing = 424242;
-      if (mul_result != xxs) {
-        cout << "*** FAILED ***" << '\n';
-        return_code |= ERR_STRUCTS;
-      }
-    } catch (TTransportException&) {
-      throw;
-    } catch (exception& ex) {
-      cout << "*** FAILED ***" << '\n' << ex.what() << '\n';
-      return_code |= ERR_STRUCTS;
-    }
+    return_code |= run_multi_tests(testClient);
 
-    /* test exception */
-
-    try {
-      cout << "testClient.testException(\"Xception\") =>" << flush;
-      testClient.testException("Xception");
-      cout << "  void\n*** FAILED ***" << '\n';
-      return_code |= ERR_EXCEPTIONS;
-
-    } catch (Xception& e) {
-      printf("  {%u, \"%s\"}\n", e.errorCode, e.message.c_str());
-    }
-
-    try {
-      cout << "testClient.testException(\"TException\") =>" << flush;
-      testClient.testException("TException");
-      cout << "  void\n*** FAILED ***" << '\n';
-      return_code |= ERR_EXCEPTIONS;
-
-    } catch (const TException&) {
-      cout << "  Caught TException" << '\n';
-    }
-
-    try {
-      cout << "testClient.testException(\"success\") =>" << flush;
-      testClient.testException("success");
-      cout << "  void" << '\n';
-    } catch (exception & ex) {                                                                       \
-      cout << "*** FAILED ***" << '\n' << ex.what() << '\n';
-      return_code |= ERR_EXCEPTIONS;
-    }
-
-    /* test multi exception */
-
-    try {
-      cout << "testClient.testMultiException(\"Xception\", \"test 1\") =>" << flush;
-      Xtruct result;
-      testClient.testMultiException(result, "Xception", "test 1");
-      cout << "  result\n*** FAILED ***" << '\n';
-      return_code |= ERR_EXCEPTIONS;
-    } catch (Xception& e) {
-      printf("  {%u, \"%s\"}\n", e.errorCode, e.message.c_str());
-    }
-
-    try {
-      cout << "testClient.testMultiException(\"Xception2\", \"test 2\") =>" << flush;
-      Xtruct result;
-      testClient.testMultiException(result, "Xception2", "test 2");
-      cout << "  result\n*** FAILED ***" << '\n';
-      return_code |= ERR_EXCEPTIONS;
-
-    } catch (Xception2& e) {
-      printf("  {%u, {\"%s\"}}\n", e.errorCode, e.struct_thing.string_thing.c_str());
-    }
-
-    try {
-      cout << "testClient.testMultiException(\"success\", \"test 3\") =>" << flush;
-      Xtruct result;
-      testClient.testMultiException(result, "success", "test 3");
-      printf("  {{\"%s\"}}\n", result.string_thing.c_str());
-    } catch (exception & ex) {                                                                       \
-      cout << "*** FAILED ***" << '\n' << ex.what() << '\n';
-      return_code |= ERR_EXCEPTIONS;
-    }
+    /**
+     * EXCEPTION TESTS (classic, with pure convert checks on caught exceptions)
+     */
+    return_code |= run_exception_tests(testClient);
 
     /* test oneway void */
     {
