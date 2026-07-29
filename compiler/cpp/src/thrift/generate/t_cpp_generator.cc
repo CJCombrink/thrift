@@ -23,10 +23,12 @@
 
 #include <cassert>
 
+#include <functional>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -71,6 +73,7 @@ public:
     gen_no_skeleton_ = false;
     gen_no_constructors_ = false;
     gen_private_optional_ = false;
+    gen_pure_ = false;
     has_members_ = false;
 
     for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
@@ -105,6 +108,8 @@ public:
         gen_no_constructors_ = true;
       } else if ( iter->first.compare("private_optional") == 0) {
         gen_private_optional_ = true;
+      } else if ( iter->first.compare("pure") == 0) {
+        gen_pure_ = true;
       } else {
         throw "unknown option cpp:" + iter->first;
       }
@@ -139,6 +144,24 @@ public:
   void generate_struct(t_struct* tstruct) override { generate_cpp_struct(tstruct, false); }
   void generate_xception(t_struct* txception) override { generate_cpp_struct(txception, true); }
   void generate_cpp_struct(t_struct* tstruct, bool is_exception);
+
+  /**
+   * Pure C++23 structure generation (option "pure").
+   * Emits a separate *_types_pure.h with modern data-only types (no TBase /
+   * protocol / transport includes): std::optional for optional fields and
+   * std::variant for unions, under a nested `pure` namespace.
+   */
+  void generate_pure_types();
+  void generate_pure_enum(std::ostream& out, t_enum* tenum);
+  void generate_pure_typedef(std::ostream& out, t_typedef* ttypedef);
+  void generate_pure_struct(std::ostream& out, t_struct* tstruct);
+  void generate_pure_union(std::ostream& out, t_struct* tstruct);
+  std::string pure_type_name(t_type* ttype);
+  std::string pure_field_type_name(t_field* tfield);
+  std::string pure_declare_field(t_field* tfield);
+  std::string pure_render_const_value(t_type* type, t_const_value* value);
+  bool pure_type_uses_uuid(t_type* ttype);
+  bool pure_program_uses_uuid();
 
   void generate_service(t_service* tservice) override;
 
@@ -423,6 +446,12 @@ private:
   bool gen_private_optional_;
 
   /**
+   * True if we should also generate pure C++23 data structures (std::optional /
+   * std::variant) in a nested `pure` namespace, in parallel with classic types.
+   */
+  bool gen_pure_;
+
+  /**
    * True if thrift has member(s)
    */
   bool has_members_;
@@ -586,6 +615,11 @@ void t_cpp_generator::close_generator() {
 
   if (!has_members_) {
     remove(f_types_impl_name.c_str());
+  }
+
+  // Emit a separate pure C++23 types header (no thrift runtime deps).
+  if (gen_pure_) {
+    generate_pure_types();
   }
 }
 
@@ -5162,6 +5196,408 @@ std::string t_cpp_generator::display_name() const {
   return "C++";
 }
 
+bool t_cpp_generator::pure_type_uses_uuid(t_type* ttype) {
+  // Guard against recursive thrift types (e.g. struct RecTree { list<RecTree> }).
+  std::set<t_type*> seen;
+  std::function<bool(t_type*)> walk = [&](t_type* t) -> bool {
+    t = get_true_type(t);
+    if (t == nullptr) {
+      return false;
+    }
+    if (t->is_base_type()) {
+      return ((t_base_type*)t)->get_base() == t_base_type::TYPE_UUID;
+    }
+    if (t->is_map()) {
+      t_map* tmap = (t_map*)t;
+      return walk(tmap->get_key_type()) || walk(tmap->get_val_type());
+    }
+    if (t->is_set()) {
+      return walk(((t_set*)t)->get_elem_type());
+    }
+    if (t->is_list()) {
+      return walk(((t_list*)t)->get_elem_type());
+    }
+    if (t->is_struct() || t->is_xception()) {
+      // Included programs' pure headers include TUuid themselves when needed.
+      if (t->get_program() != nullptr && t->get_program() != program_) {
+        return false;
+      }
+      if (!seen.insert(t).second) {
+        return false;
+      }
+      const vector<t_field*>& members = ((t_struct*)t)->get_members();
+      for (auto* field : members) {
+        if (walk(field->get_type())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+  return walk(ttype);
+}
+
+bool t_cpp_generator::pure_program_uses_uuid() {
+  for (auto* ttypedef : program_->get_typedefs()) {
+    if (pure_type_uses_uuid(ttypedef->get_type())) {
+      return true;
+    }
+  }
+  for (auto* tstruct : program_->get_objects()) {
+    if (pure_type_uses_uuid(tstruct)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * C++ type name for pure structures. Same-program enums/structs resolve to their
+ * pure counterparts (unqualified names inside namespace pure). Types from other
+ * programs use that program's pure:: nested names (expects included pure headers).
+ */
+string t_cpp_generator::pure_type_name(t_type* ttype) {
+  // Preserve typedef names when the pure header also emits them.
+  if (ttype->is_typedef()) {
+    t_program* program = ttype->get_program();
+    if (program != nullptr && program != program_) {
+      return namespace_prefix(program->get_namespace("cpp")) + "pure::" + ttype->get_name();
+    }
+    return ttype->get_name();
+  }
+
+  ttype = get_true_type(ttype);
+
+  if (ttype->is_base_type()) {
+    string bname = base_type_name(((t_base_type*)ttype)->get_base());
+    std::map<string, std::vector<string>>::iterator it = ttype->annotations_.find("cpp.type");
+    if (it != ttype->annotations_.end() && !it->second.empty()) {
+      bname = it->second.back();
+    }
+    return bname;
+  }
+
+  if (ttype->is_container()) {
+    t_container* tcontainer = (t_container*)ttype;
+    if (tcontainer->has_cpp_name()) {
+      return tcontainer->get_cpp_name();
+    }
+    if (ttype->is_map()) {
+      t_map* tmap = (t_map*)ttype;
+      return "std::map<" + pure_type_name(tmap->get_key_type()) + ", "
+             + pure_type_name(tmap->get_val_type()) + "> ";
+    }
+    if (ttype->is_set()) {
+      t_set* tset = (t_set*)ttype;
+      return "std::set<" + pure_type_name(tset->get_elem_type()) + "> ";
+    }
+    if (ttype->is_list()) {
+      t_list* tlist = (t_list*)ttype;
+      return "std::vector<" + pure_type_name(tlist->get_elem_type()) + "> ";
+    }
+  }
+
+  // Enum, struct, or exception — all live under pure:: in the pure header.
+  t_program* program = ttype->get_program();
+  if (program != nullptr && program != program_) {
+    return namespace_prefix(program->get_namespace("cpp")) + "pure::" + ttype->get_name();
+  }
+  return ttype->get_name();
+}
+
+/**
+ * Type name of a pure field, including shared_ptr for reference fields.
+ */
+string t_cpp_generator::pure_field_type_name(t_field* tfield) {
+  string result = pure_type_name(tfield->get_type());
+  if (is_reference(tfield)) {
+    result = "::std::shared_ptr<" + result + ">";
+  }
+  return result;
+}
+
+/**
+ * Render a constant for use in pure field initializers (no thrift helpers).
+ */
+string t_cpp_generator::pure_render_const_value(t_type* type, t_const_value* value) {
+  type = get_true_type(type);
+  if (type->is_base_type()) {
+    t_base_type::t_base tbase = ((t_base_type*)type)->get_base();
+    switch (tbase) {
+    case t_base_type::TYPE_STRING:
+      return "\"" + get_escaped_string(value) + "\"";
+    case t_base_type::TYPE_BOOL:
+      return (value->get_integer() > 0) ? "true" : "false";
+    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_I16:
+    case t_base_type::TYPE_I32:
+      return std::to_string(value->get_integer());
+    case t_base_type::TYPE_I64:
+      return std::to_string(value->get_integer()) + "LL";
+    case t_base_type::TYPE_DOUBLE:
+      if (value->get_type() == t_const_value::CV_INTEGER) {
+        return "static_cast<double>(" + std::to_string(value->get_integer()) + ")";
+      }
+      return emit_double_as_string(value->get_double());
+    case t_base_type::TYPE_UUID:
+      // Default construction; string form would need thrift helpers.
+      return {};
+    default:
+      throw "compiler error: pure const of unsupported base type "
+            + t_base_type::t_base_name(tbase);
+    }
+  }
+  if (type->is_enum()) {
+    return "static_cast<" + pure_type_name(type) + ">("
+           + std::to_string(value->get_integer()) + ")";
+  }
+  // Containers/structs as field defaults are rare; fall back empty.
+  return {};
+}
+
+/**
+ * Field declaration for pure structures. Optional fields use std::optional.
+ */
+string t_cpp_generator::pure_declare_field(t_field* tfield) {
+  string field_type = pure_field_type_name(tfield);
+  bool is_optional = tfield->get_req() == t_field::T_OPTIONAL;
+  t_type* type = get_true_type(tfield->get_type());
+  t_const_value* cv = tfield->get_value();
+
+  string result;
+  if (is_optional) {
+    result = "std::optional<" + field_type + "> " + tfield->get_name();
+    if (cv != nullptr) {
+      string rendered = pure_render_const_value(type, cv);
+      if (!rendered.empty()) {
+        result += "{" + rendered + "}";
+      }
+    }
+  } else {
+    result = field_type + " " + tfield->get_name();
+    if (cv != nullptr) {
+      string rendered = pure_render_const_value(type, cv);
+      if (!rendered.empty()) {
+        result += "{" + rendered + "}";
+      }
+    } else if (type->is_base_type()) {
+      t_base_type::t_base tbase = ((t_base_type*)type)->get_base();
+      if (tbase != t_base_type::TYPE_STRING && tbase != t_base_type::TYPE_UUID
+          && tbase != t_base_type::TYPE_VOID) {
+        result += "{}";
+      }
+    } else if (type->is_enum()) {
+      result += "{}";
+    }
+  }
+  result += ";";
+  return result;
+}
+
+void t_cpp_generator::generate_pure_enum(std::ostream& out, t_enum* tenum) {
+  generate_java_doc(out, tenum);
+  // Always emit enum class in the pure header (C++11+, thrift-runtime free).
+  indent(out) << "enum class " << tenum->get_name();
+  generate_enum_constant_list(out, tenum->get_constants(), "", "", true);
+  out << '\n';
+}
+
+void t_cpp_generator::generate_pure_typedef(std::ostream& out, t_typedef* ttypedef) {
+  generate_java_doc(out, ttypedef);
+  indent(out) << "typedef " << pure_type_name(ttypedef->get_type()) << " "
+              << ttypedef->get_symbolic() << ";" << '\n' << '\n';
+}
+
+/**
+ * Pure union: a single std::variant over monostate + all field types, plus a
+ * field_id enum that mirrors the variant index for ergonomic access.
+ */
+void t_cpp_generator::generate_pure_union(std::ostream& out, t_struct* tstruct) {
+  const vector<t_field*>& members = tstruct->get_members();
+  vector<t_field*>::const_iterator m_iter;
+
+  generate_java_doc(out, tstruct);
+  indent(out) << "struct " << tstruct->get_name() << " {" << '\n';
+  indent_up();
+
+  indent(out) << "using value_type = std::variant<" << '\n';
+  indent_up();
+  indent(out) << "std::monostate";
+  for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+    out << "," << '\n';
+    indent(out) << pure_field_type_name(*m_iter);
+  }
+  out << '\n';
+  indent_down();
+  indent(out) << ">;" << '\n' << '\n';
+
+  indent(out) << "enum class field_id : std::size_t {" << '\n';
+  indent_up();
+  indent(out) << "__EMPTY__ = 0";
+  std::size_t index = 1;
+  for (m_iter = members.begin(); m_iter != members.end(); ++m_iter, ++index) {
+    out << "," << '\n';
+    indent(out) << (*m_iter)->get_name() << " = " << index;
+  }
+  out << '\n';
+  indent_down();
+  indent(out) << "};" << '\n' << '\n';
+
+  indent(out) << "value_type value{};" << '\n' << '\n';
+
+  indent(out) << "field_id get_field_id() const {" << '\n';
+  indent_up();
+  indent(out) << "return static_cast<field_id>(value.index());" << '\n';
+  indent_down();
+  indent(out) << "}" << '\n';
+
+  // Convenience typed setters/getters for each alternative.
+  // Index-based std::get avoids ambiguity when multiple fields share a type.
+  std::size_t field_index = 1;
+  for (m_iter = members.begin(); m_iter != members.end(); ++m_iter, ++field_index) {
+    string fname = (*m_iter)->get_name();
+    string ftype = pure_field_type_name(*m_iter);
+    out << '\n';
+    indent(out) << "bool is_set_" << fname << "() const {" << '\n';
+    indent_up();
+    indent(out) << "return get_field_id() == field_id::" << fname << ";" << '\n';
+    indent_down();
+    indent(out) << "}" << '\n';
+
+    indent(out) << "const " << ftype << "& get_" << fname << "() const {" << '\n';
+    indent_up();
+    indent(out) << "return std::get<" << field_index << ">(value);" << '\n';
+    indent_down();
+    indent(out) << "}" << '\n';
+
+    indent(out) << ftype << "& get_" << fname << "() {" << '\n';
+    indent_up();
+    indent(out) << "return std::get<" << field_index << ">(value);" << '\n';
+    indent_down();
+    indent(out) << "}" << '\n';
+
+    indent(out) << "void set_" << fname << "(" << ftype << " v) {" << '\n';
+    indent_up();
+    indent(out) << "value.emplace<" << field_index << ">(std::move(v));" << '\n';
+    indent_down();
+    indent(out) << "}" << '\n';
+  }
+
+  indent_down();
+  indent(out) << "};" << '\n' << '\n';
+}
+
+/**
+ * Pure struct/exception: public data members; optional fields are std::optional.
+ */
+void t_cpp_generator::generate_pure_struct(std::ostream& out, t_struct* tstruct) {
+  if (tstruct->is_union()) {
+    generate_pure_union(out, tstruct);
+    return;
+  }
+
+  const vector<t_field*>& members = tstruct->get_members();
+  vector<t_field*>::const_iterator m_iter;
+
+  generate_java_doc(out, tstruct);
+  indent(out) << "struct " << tstruct->get_name() << " {" << '\n';
+  indent_up();
+
+  for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+    generate_java_doc(out, *m_iter);
+    indent(out) << pure_declare_field(*m_iter) << '\n';
+  }
+
+  indent_down();
+  indent(out) << "};" << '\n' << '\n';
+}
+
+/**
+ * Write program_name_types_pure.h — pure C++ data structures with no thrift
+ * runtime dependencies (TBase / protocol / transport). Classic *_types.h is
+ * still generated unchanged. Pure types live in nested namespace `pure`.
+ */
+void t_cpp_generator::generate_pure_types() {
+  string f_pure_name = get_out_dir() + program_name_ + "_types_pure.h";
+  ofstream_with_content_based_conditional_update f_pure;
+  f_pure.open(f_pure_name);
+
+  f_pure << autogen_comment();
+  f_pure << "#ifndef " << program_name_ << "_TYPES_PURE_H" << '\n'
+         << "#define " << program_name_ << "_TYPES_PURE_H" << '\n' << '\n';
+
+  // Standard library only (plus thrift type headers when strictly required).
+  f_pure << "#include <cstdint>" << '\n'
+         << "#include <map>" << '\n'
+         << "#include <memory>" << '\n'
+         << "#include <optional>" << '\n'
+         << "#include <set>" << '\n'
+         << "#include <string>" << '\n'
+         << "#include <utility>" << '\n'
+         << "#include <variant>" << '\n'
+         << "#include <vector>" << '\n'
+         << "#include <cstddef>" << '\n' << '\n';
+
+  if (pure_program_uses_uuid()) {
+    // TUuid is a thrift *type*, not the RPC runtime.
+    f_pure << "#include <thrift/TUuid.h>" << '\n' << '\n';
+  }
+
+  // Included thrift programs: prefer their pure headers.
+  const vector<t_program*>& includes = program_->get_includes();
+  for (auto include : includes) {
+    f_pure << "#include \"" << get_include_prefix(*include)
+           << get_legal_program_name(include->get_name()) << "_types_pure.h\"" << '\n';
+  }
+  if (!includes.empty()) {
+    f_pure << '\n';
+  }
+
+  // Custom cpp includes from the IDL (may declare cpp.type replacements).
+  const vector<string>& cpp_includes = program_->get_cpp_includes();
+  for (const auto& cpp_include : cpp_includes) {
+    if (cpp_include[0] == '<') {
+      f_pure << "#include " << cpp_include << '\n';
+    } else {
+      f_pure << "#include \"" << cpp_include << "\"" << '\n';
+    }
+  }
+  if (!cpp_includes.empty()) {
+    f_pure << '\n';
+  }
+
+  f_pure << ns_open_ << '\n' << '\n';
+  f_pure << "namespace pure {" << '\n' << '\n';
+
+  // Enums
+  for (auto* tenum : program_->get_enums()) {
+    generate_pure_enum(f_pure, tenum);
+  }
+
+  // Typedefs
+  for (auto* ttypedef : program_->get_typedefs()) {
+    generate_pure_typedef(f_pure, ttypedef);
+  }
+
+  // Forward declarations for mutually recursive structs/unions/exceptions.
+  const vector<t_struct*>& objects = program_->get_objects();
+  for (auto* tstruct : objects) {
+    indent(f_pure) << "struct " << tstruct->get_name() << ";" << '\n';
+  }
+  if (!objects.empty()) {
+    f_pure << '\n';
+  }
+
+  for (auto* tstruct : objects) {
+    generate_pure_struct(f_pure, tstruct);
+  }
+
+  f_pure << "} // namespace pure" << '\n' << '\n';
+  f_pure << ns_close_ << '\n' << '\n';
+  f_pure << "#endif // " << program_name_ << "_TYPES_PURE_H" << '\n';
+  f_pure.close();
+}
+
 
 THRIFT_REGISTER_GENERATOR(
     cpp,
@@ -5174,6 +5610,11 @@ THRIFT_REGISTER_GENERATOR(
     "    templates:       Generate templatized reader/writer methods.\n"
     "    pure_enums:      Generate pure enums instead of wrapper classes.\n"
     "                     When 'pure_enums=enum_class', generate C++ 11 enum class.\n"
+    "    pure:            Also emit *_types_pure.h with pure C++23 data structures\n"
+    "                     in a nested `pure` namespace (std::optional for optional\n"
+    "                     fields, std::variant for unions). The pure header has no\n"
+    "                     thrift runtime deps (only std + thrift types like TUuid).\n"
+    "                     Classic *_types.h is still generated unchanged.\n"
     "    include_prefix:  Use full include paths in generated files.\n"
     "    moveable_types:  Generate move constructors and assignment operators.\n"
     "                     When 'moveable_types=forward_setter', also generate setters\n"

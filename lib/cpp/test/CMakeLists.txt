@@ -271,6 +271,38 @@ target_link_libraries(OptionalRequiredTest
 target_link_libraries(OptionalRequiredTest thrift)
 add_test(NAME OptionalRequiredTest COMMAND OptionalRequiredTest)
 
+# Pure C++23 structures (generator option pure): std::optional / std::variant
+# Emits classic *_types.h and separate thrift-runtime-free *_types_pure.h
+add_custom_command(OUTPUT gen-cpp-pure/OptionalRequiredTest_types.cpp
+                          gen-cpp-pure/OptionalRequiredTest_types.h
+                          gen-cpp-pure/OptionalRequiredTest_types_pure.h
+    COMMAND ${CMAKE_COMMAND} -E make_directory gen-cpp-pure
+    COMMAND ${THRIFT_COMPILER} -out gen-cpp-pure --gen cpp:pure,no_skeleton
+            ${PROJECT_SOURCE_DIR}/test/OptionalRequiredTest.thrift
+    DEPENDS ${PROJECT_SOURCE_DIR}/test/OptionalRequiredTest.thrift
+    ${THRIFT_COMPILER}
+)
+add_custom_command(OUTPUT gen-cpp-pure/Recursive_types.cpp
+                          gen-cpp-pure/Recursive_types.h
+                          gen-cpp-pure/Recursive_types_pure.h
+    COMMAND ${CMAKE_COMMAND} -E make_directory gen-cpp-pure
+    COMMAND ${THRIFT_COMPILER} -out gen-cpp-pure --gen cpp:pure,no_skeleton
+            ${PROJECT_SOURCE_DIR}/test/Recursive.thrift
+    DEPENDS ${PROJECT_SOURCE_DIR}/test/Recursive.thrift
+    ${THRIFT_COMPILER}
+)
+add_executable(PureTypesTest
+    PureTypesTest.cpp
+    gen-cpp-pure/OptionalRequiredTest_types.cpp
+    gen-cpp-pure/Recursive_types.cpp
+)
+target_compile_features(PureTypesTest PRIVATE cxx_std_17)
+target_link_libraries(PureTypesTest
+    ${Boost_LIBRARIES}
+)
+target_link_libraries(PureTypesTest thrift)
+add_test(NAME PureTypesTest COMMAND PureTypesTest)
+
 add_executable(RecursiveTest RecursiveTest.cpp)
 target_link_libraries(RecursiveTest
     testgencpp

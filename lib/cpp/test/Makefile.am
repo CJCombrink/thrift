@@ -34,7 +34,11 @@ BUILT_SOURCES = gen-cpp/AnnotationTest_types.h \
                 gen-cpp/ParentService.h \
                 gen-cpp/OneWayTest_types.h \
                 gen-cpp/OneWayService.h \
-                gen-cpp/proc_types.h
+                gen-cpp/proc_types.h \
+                gen-cpp-pure/OptionalRequiredTest_types.h \
+                gen-cpp-pure/OptionalRequiredTest_types_pure.h \
+                gen-cpp-pure/Recursive_types.h \
+                gen-cpp-pure/Recursive_types_pure.h
 
 noinst_LTLIBRARIES = libtestgencpp.la libprocessortest.la
 nodist_libtestgencpp_la_SOURCES = \
@@ -112,7 +116,8 @@ check_PROGRAMS = \
 	TSSLSocketMatchNameTest \
 	EnumTest \
 	RenderedDoubleConstantsTest \
-	AnnotationTest
+	AnnotationTest \
+	PureTypesTest
 
 if AMX_HAVE_LIBEVENT
 noinst_PROGRAMS += \
@@ -255,6 +260,23 @@ AnnotationTest_SOURCES = \
 AnnotationTest_LDADD = \
   libtestgencpp.la \
   $(BOOST_TEST_LDADD)
+
+#
+# PureTypesTest — cpp:pure generator option (std::optional / std::variant)
+#
+PureTypesTest_SOURCES = \
+	PureTypesTest.cpp
+
+nodist_PureTypesTest_SOURCES = \
+	gen-cpp-pure/OptionalRequiredTest_types.cpp \
+	gen-cpp-pure/Recursive_types.cpp
+
+PureTypesTest_LDADD = \
+  $(top_builddir)/lib/cpp/libthrift.la \
+  $(BOOST_TEST_LDADD)
+
+# pure types require C++17 (std::optional / std::variant); C++23-compatible
+PureTypesTest_CXXFLAGS = $(AM_CXXFLAGS) -std=c++17
 
 TFileTransportTest_SOURCES = \
 	TFileTransportTest.cpp
@@ -480,12 +502,21 @@ gen-cpp/Thrift5272_types.cpp gen-cpp/Thrift5272_types.h: Thrift5272.thrift
 gen-cpp/ChildService.cpp gen-cpp/ChildService.h gen-cpp/ParentService.cpp gen-cpp/ParentService.h gen-cpp/proc_types.cpp gen-cpp/proc_types.h: processor/proc.thrift
 	$(THRIFT) --gen cpp:templates,cob_style $<
 
+# Pure C++23 structures generated in parallel (option pure)
+gen-cpp-pure/OptionalRequiredTest_types.cpp gen-cpp-pure/OptionalRequiredTest_types.h gen-cpp-pure/OptionalRequiredTest_types_pure.h: $(top_srcdir)/test/OptionalRequiredTest.thrift
+	$(MKDIR_P) gen-cpp-pure
+	$(THRIFT) -out gen-cpp-pure --gen cpp:pure,no_skeleton $<
+
+gen-cpp-pure/Recursive_types.cpp gen-cpp-pure/Recursive_types.h gen-cpp-pure/Recursive_types_pure.h: $(top_srcdir)/test/Recursive.thrift
+	$(MKDIR_P) gen-cpp-pure
+	$(THRIFT) -out gen-cpp-pure --gen cpp:pure,no_skeleton $<
+
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) -I$(top_srcdir)/lib/cpp/src -I$(top_srcdir)/lib/cpp/src/thrift -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -I.
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 AM_CXXFLAGS = -Wall -Wextra -pedantic
 
 clean-local:
-	$(RM) gen-cpp/*
+	$(RM) -r gen-cpp/* gen-cpp-pure/*
 
 distdir:
 	$(MAKE) $(AM_MAKEFLAGS) distdir-am
