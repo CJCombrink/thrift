@@ -37,8 +37,10 @@ BUILT_SOURCES = gen-cpp/AnnotationTest_types.h \
                 gen-cpp/proc_types.h \
                 gen-cpp-pure/OptionalRequiredTest_types.h \
                 gen-cpp-pure/OptionalRequiredTest_types_pure.h \
+                gen-cpp-pure/OptionalRequiredTest_types_pure_convert.h \
                 gen-cpp-pure/Recursive_types.h \
-                gen-cpp-pure/Recursive_types_pure.h
+                gen-cpp-pure/Recursive_types_pure.h \
+                gen-cpp-pure/Recursive_types_pure_convert.h
 
 noinst_LTLIBRARIES = libtestgencpp.la libprocessortest.la
 nodist_libtestgencpp_la_SOURCES = \
@@ -269,7 +271,9 @@ PureTypesTest_SOURCES = \
 
 nodist_PureTypesTest_SOURCES = \
 	gen-cpp-pure/OptionalRequiredTest_types.cpp \
-	gen-cpp-pure/Recursive_types.cpp
+	gen-cpp-pure/OptionalRequiredTest_types_pure_convert.cpp \
+	gen-cpp-pure/Recursive_types.cpp \
+	gen-cpp-pure/Recursive_types_pure_convert.cpp
 
 PureTypesTest_LDADD = \
   $(top_builddir)/lib/cpp/libthrift.la \
@@ -503,11 +507,11 @@ gen-cpp/ChildService.cpp gen-cpp/ChildService.h gen-cpp/ParentService.cpp gen-cp
 	$(THRIFT) --gen cpp:templates,cob_style $<
 
 # Pure C++23 structures generated in parallel (option pure)
-gen-cpp-pure/OptionalRequiredTest_types.cpp gen-cpp-pure/OptionalRequiredTest_types.h gen-cpp-pure/OptionalRequiredTest_types_pure.h: $(top_srcdir)/test/OptionalRequiredTest.thrift
+gen-cpp-pure/OptionalRequiredTest_types.cpp gen-cpp-pure/OptionalRequiredTest_types.h gen-cpp-pure/OptionalRequiredTest_types_pure.h gen-cpp-pure/OptionalRequiredTest_types_pure_convert.h gen-cpp-pure/OptionalRequiredTest_types_pure_convert.cpp: $(top_srcdir)/test/OptionalRequiredTest.thrift
 	$(MKDIR_P) gen-cpp-pure
 	$(THRIFT) -out gen-cpp-pure --gen cpp:pure,no_skeleton $<
 
-gen-cpp-pure/Recursive_types.cpp gen-cpp-pure/Recursive_types.h gen-cpp-pure/Recursive_types_pure.h: $(top_srcdir)/test/Recursive.thrift
+gen-cpp-pure/Recursive_types.cpp gen-cpp-pure/Recursive_types.h gen-cpp-pure/Recursive_types_pure.h gen-cpp-pure/Recursive_types_pure_convert.h gen-cpp-pure/Recursive_types_pure_convert.cpp: $(top_srcdir)/test/Recursive.thrift
 	$(MKDIR_P) gen-cpp-pure
 	$(THRIFT) -out gen-cpp-pure --gen cpp:pure,no_skeleton $<
 

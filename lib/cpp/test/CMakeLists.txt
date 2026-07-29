@@ -276,6 +276,8 @@ add_test(NAME OptionalRequiredTest COMMAND OptionalRequiredTest)
 add_custom_command(OUTPUT gen-cpp-pure/OptionalRequiredTest_types.cpp
                           gen-cpp-pure/OptionalRequiredTest_types.h
                           gen-cpp-pure/OptionalRequiredTest_types_pure.h
+                          gen-cpp-pure/OptionalRequiredTest_types_pure_convert.h
+                          gen-cpp-pure/OptionalRequiredTest_types_pure_convert.cpp
     COMMAND ${CMAKE_COMMAND} -E make_directory gen-cpp-pure
     COMMAND ${THRIFT_COMPILER} -out gen-cpp-pure --gen cpp:pure,no_skeleton
             ${PROJECT_SOURCE_DIR}/test/OptionalRequiredTest.thrift
@@ -285,6 +287,8 @@ add_custom_command(OUTPUT gen-cpp-pure/OptionalRequiredTest_types.cpp
 add_custom_command(OUTPUT gen-cpp-pure/Recursive_types.cpp
                           gen-cpp-pure/Recursive_types.h
                           gen-cpp-pure/Recursive_types_pure.h
+                          gen-cpp-pure/Recursive_types_pure_convert.h
+                          gen-cpp-pure/Recursive_types_pure_convert.cpp
     COMMAND ${CMAKE_COMMAND} -E make_directory gen-cpp-pure
     COMMAND ${THRIFT_COMPILER} -out gen-cpp-pure --gen cpp:pure,no_skeleton
             ${PROJECT_SOURCE_DIR}/test/Recursive.thrift
@@ -294,7 +298,9 @@ add_custom_command(OUTPUT gen-cpp-pure/Recursive_types.cpp
 add_executable(PureTypesTest
     PureTypesTest.cpp
     gen-cpp-pure/OptionalRequiredTest_types.cpp
+    gen-cpp-pure/OptionalRequiredTest_types_pure_convert.cpp
     gen-cpp-pure/Recursive_types.cpp
+    gen-cpp-pure/Recursive_types_pure_convert.cpp
 )
 target_compile_features(PureTypesTest PRIVATE cxx_std_17)
 target_link_libraries(PureTypesTest

@@ -150,18 +150,37 @@ public:
    * Emits a separate *_types_pure.h with modern data-only types (no TBase /
    * protocol / transport includes): std::optional for optional fields and
    * std::variant for unions, under a nested `pure` namespace.
+   * Also emits *_types_pure_convert.h/.cpp with to_pure / from_pure converters.
    */
   void generate_pure_types();
+  void generate_pure_convert();
   void generate_pure_enum(std::ostream& out, t_enum* tenum);
   void generate_pure_typedef(std::ostream& out, t_typedef* ttypedef);
   void generate_pure_struct(std::ostream& out, t_struct* tstruct);
   void generate_pure_union(std::ostream& out, t_struct* tstruct);
+  void generate_pure_convert_enum_decl(std::ostream& out, t_enum* tenum);
+  void generate_pure_convert_enum_defn(std::ostream& out, t_enum* tenum);
+  void generate_pure_convert_struct_decl(std::ostream& out, t_struct* tstruct);
+  void generate_pure_convert_struct_defn(std::ostream& out, t_struct* tstruct);
+  void generate_pure_convert_union_defn(std::ostream& out, t_struct* tstruct);
+  void generate_to_pure_value(std::ostream& out,
+                              t_type* type,
+                              const std::string& dest,
+                              const std::string& src,
+                              bool is_ref);
+  void generate_from_pure_value(std::ostream& out,
+                                t_type* type,
+                                const std::string& dest,
+                                const std::string& src,
+                                bool is_ref);
   std::string pure_type_name(t_type* ttype);
+  std::string pure_fq_type_name(t_type* ttype);
   std::string pure_field_type_name(t_field* tfield);
   std::string pure_declare_field(t_field* tfield);
   std::string pure_render_const_value(t_type* type, t_const_value* value);
   bool pure_type_uses_uuid(t_type* ttype);
   bool pure_program_uses_uuid();
+  bool pure_type_needs_conversion(t_type* ttype);
 
   void generate_service(t_service* tservice) override;
 
@@ -617,9 +636,11 @@ void t_cpp_generator::close_generator() {
     remove(f_types_impl_name.c_str());
   }
 
-  // Emit a separate pure C++23 types header (no thrift runtime deps).
+  // Emit a separate pure C++23 types header (no thrift runtime deps),
+  // plus classic↔pure conversion helpers in separate convert files.
   if (gen_pure_) {
     generate_pure_types();
+    generate_pure_convert();
   }
 }
 
@@ -5598,6 +5619,545 @@ void t_cpp_generator::generate_pure_types() {
   f_pure.close();
 }
 
+/**
+ * Fully-qualified pure type name as seen from the program namespace
+ * (adds pure:: for same-program user types).
+ */
+string t_cpp_generator::pure_fq_type_name(t_type* ttype) {
+  if (ttype->is_typedef()) {
+    t_program* program = ttype->get_program();
+    if (program != nullptr && program != program_) {
+      return namespace_prefix(program->get_namespace("cpp")) + "pure::" + ttype->get_name();
+    }
+    return "pure::" + ttype->get_name();
+  }
+
+  ttype = get_true_type(ttype);
+
+  if (ttype->is_base_type()) {
+    string bname = base_type_name(((t_base_type*)ttype)->get_base());
+    std::map<string, std::vector<string>>::iterator it = ttype->annotations_.find("cpp.type");
+    if (it != ttype->annotations_.end() && !it->second.empty()) {
+      bname = it->second.back();
+    }
+    return bname;
+  }
+
+  if (ttype->is_container()) {
+    t_container* tcontainer = (t_container*)ttype;
+    if (tcontainer->has_cpp_name()) {
+      return tcontainer->get_cpp_name();
+    }
+    if (ttype->is_map()) {
+      t_map* tmap = (t_map*)ttype;
+      return "std::map<" + pure_fq_type_name(tmap->get_key_type()) + ", "
+             + pure_fq_type_name(tmap->get_val_type()) + "> ";
+    }
+    if (ttype->is_set()) {
+      t_set* tset = (t_set*)ttype;
+      return "std::set<" + pure_fq_type_name(tset->get_elem_type()) + "> ";
+    }
+    if (ttype->is_list()) {
+      t_list* tlist = (t_list*)ttype;
+      return "std::vector<" + pure_fq_type_name(tlist->get_elem_type()) + "> ";
+    }
+  }
+
+  t_program* program = ttype->get_program();
+  if (program != nullptr && program != program_) {
+    return namespace_prefix(program->get_namespace("cpp")) + "pure::" + ttype->get_name();
+  }
+  return "pure::" + ttype->get_name();
+}
+
+/**
+ * True if converting this type requires more than a simple assignment
+ * (enums, structs, containers of those, or references to those).
+ */
+bool t_cpp_generator::pure_type_needs_conversion(t_type* ttype) {
+  ttype = get_true_type(ttype);
+  if (ttype->is_base_type()) {
+    return false;
+  }
+  if (ttype->is_enum() || ttype->is_struct() || ttype->is_xception()) {
+    return true;
+  }
+  if (ttype->is_map()) {
+    t_map* tmap = (t_map*)ttype;
+    return pure_type_needs_conversion(tmap->get_key_type())
+           || pure_type_needs_conversion(tmap->get_val_type());
+  }
+  if (ttype->is_set()) {
+    return pure_type_needs_conversion(((t_set*)ttype)->get_elem_type());
+  }
+  if (ttype->is_list()) {
+    return pure_type_needs_conversion(((t_list*)ttype)->get_elem_type());
+  }
+  return false;
+}
+
+void t_cpp_generator::generate_to_pure_value(ostream& out,
+                                             t_type* type,
+                                             const string& dest,
+                                             const string& src,
+                                             bool is_ref) {
+  type = get_true_type(type);
+
+  if (is_ref) {
+    string pure_elem = pure_fq_type_name(type);
+    indent(out) << "if (" << src << ") {" << '\n';
+    indent_up();
+    if (pure_type_needs_conversion(type)) {
+      indent(out) << dest << " = ::std::make_shared<" << pure_elem << ">(to_pure(*" << src
+                  << "));" << '\n';
+    } else {
+      indent(out) << dest << " = " << src << ";" << '\n';
+    }
+    indent_down();
+    indent(out) << "} else {" << '\n';
+    indent_up();
+    indent(out) << dest << ".reset();" << '\n';
+    indent_down();
+    indent(out) << "}" << '\n';
+    return;
+  }
+
+  if (type->is_base_type()) {
+    indent(out) << dest << " = " << src << ";" << '\n';
+    return;
+  }
+
+  if (type->is_enum()) {
+    indent(out) << dest << " = static_cast<" << pure_fq_type_name(type)
+                << ">(static_cast<int>(" << src << "));" << '\n';
+    return;
+  }
+
+  if (type->is_struct() || type->is_xception()) {
+    indent(out) << dest << " = to_pure(" << src << ");" << '\n';
+    return;
+  }
+
+  if (type->is_list()) {
+    t_type* etype = ((t_list*)type)->get_elem_type();
+    string evar = tmp("_pe");
+    indent(out) << dest << ".clear();" << '\n';
+    indent(out) << dest << ".reserve(" << src << ".size());" << '\n';
+    indent(out) << "for (const auto& " << evar << " : " << src << ") {" << '\n';
+    indent_up();
+    if (pure_type_needs_conversion(etype)) {
+      string tmpv = tmp("_pv");
+      indent(out) << pure_fq_type_name(etype) << " " << tmpv << ";" << '\n';
+      generate_to_pure_value(out, etype, tmpv, evar, false);
+      indent(out) << dest << ".push_back(::std::move(" << tmpv << "));" << '\n';
+    } else {
+      indent(out) << dest << ".push_back(" << evar << ");" << '\n';
+    }
+    indent_down();
+    indent(out) << "}" << '\n';
+    return;
+  }
+
+  if (type->is_set()) {
+    t_type* etype = ((t_set*)type)->get_elem_type();
+    string evar = tmp("_pe");
+    indent(out) << dest << ".clear();" << '\n';
+    indent(out) << "for (const auto& " << evar << " : " << src << ") {" << '\n';
+    indent_up();
+    if (pure_type_needs_conversion(etype)) {
+      string tmpv = tmp("_pv");
+      indent(out) << pure_fq_type_name(etype) << " " << tmpv << ";" << '\n';
+      generate_to_pure_value(out, etype, tmpv, evar, false);
+      indent(out) << dest << ".insert(::std::move(" << tmpv << "));" << '\n';
+    } else {
+      indent(out) << dest << ".insert(" << evar << ");" << '\n';
+    }
+    indent_down();
+    indent(out) << "}" << '\n';
+    return;
+  }
+
+  if (type->is_map()) {
+    t_map* tmap = (t_map*)type;
+    t_type* ktype = tmap->get_key_type();
+    t_type* vtype = tmap->get_val_type();
+    string evar = tmp("_pe");
+    indent(out) << dest << ".clear();" << '\n';
+    indent(out) << "for (const auto& " << evar << " : " << src << ") {" << '\n';
+    indent_up();
+    string kdest = tmp("_pkk");
+    string vdest = tmp("_pvv");
+    indent(out) << pure_fq_type_name(ktype) << " " << kdest << ";" << '\n';
+    indent(out) << pure_fq_type_name(vtype) << " " << vdest << ";" << '\n';
+    generate_to_pure_value(out, ktype, kdest, evar + ".first", false);
+    generate_to_pure_value(out, vtype, vdest, evar + ".second", false);
+    indent(out) << dest << ".emplace(::std::move(" << kdest << "), ::std::move(" << vdest
+                << "));" << '\n';
+    indent_down();
+    indent(out) << "}" << '\n';
+    return;
+  }
+
+  indent(out) << dest << " = " << src << ";" << '\n';
+}
+
+void t_cpp_generator::generate_from_pure_value(ostream& out,
+                                               t_type* type,
+                                               const string& dest,
+                                               const string& src,
+                                               bool is_ref) {
+  type = get_true_type(type);
+
+  if (is_ref) {
+    string classic_elem = type_name(type);
+    indent(out) << "if (" << src << ") {" << '\n';
+    indent_up();
+    if (pure_type_needs_conversion(type)) {
+      indent(out) << dest << " = ::std::make_shared<" << classic_elem << ">(from_pure(*" << src
+                  << "));" << '\n';
+    } else {
+      indent(out) << dest << " = " << src << ";" << '\n';
+    }
+    indent_down();
+    indent(out) << "} else {" << '\n';
+    indent_up();
+    indent(out) << dest << ".reset();" << '\n';
+    indent_down();
+    indent(out) << "}" << '\n';
+    return;
+  }
+
+  if (type->is_base_type()) {
+    indent(out) << dest << " = " << src << ";" << '\n';
+    return;
+  }
+
+  if (type->is_enum()) {
+    indent(out) << dest << " = static_cast<" << type_name(type)
+                << ">(static_cast<int>(" << src << "));" << '\n';
+    return;
+  }
+
+  if (type->is_struct() || type->is_xception()) {
+    indent(out) << dest << " = from_pure(" << src << ");" << '\n';
+    return;
+  }
+
+  if (type->is_list()) {
+    t_type* etype = ((t_list*)type)->get_elem_type();
+    string evar = tmp("_ce");
+    indent(out) << dest << ".clear();" << '\n';
+    indent(out) << dest << ".reserve(" << src << ".size());" << '\n';
+    indent(out) << "for (const auto& " << evar << " : " << src << ") {" << '\n';
+    indent_up();
+    if (pure_type_needs_conversion(etype)) {
+      string tmpv = tmp("_cv");
+      indent(out) << type_name(etype) << " " << tmpv << ";" << '\n';
+      generate_from_pure_value(out, etype, tmpv, evar, false);
+      indent(out) << dest << ".push_back(::std::move(" << tmpv << "));" << '\n';
+    } else {
+      indent(out) << dest << ".push_back(" << evar << ");" << '\n';
+    }
+    indent_down();
+    indent(out) << "}" << '\n';
+    return;
+  }
+
+  if (type->is_set()) {
+    t_type* etype = ((t_set*)type)->get_elem_type();
+    string evar = tmp("_ce");
+    indent(out) << dest << ".clear();" << '\n';
+    indent(out) << "for (const auto& " << evar << " : " << src << ") {" << '\n';
+    indent_up();
+    if (pure_type_needs_conversion(etype)) {
+      string tmpv = tmp("_cv");
+      indent(out) << type_name(etype) << " " << tmpv << ";" << '\n';
+      generate_from_pure_value(out, etype, tmpv, evar, false);
+      indent(out) << dest << ".insert(::std::move(" << tmpv << "));" << '\n';
+    } else {
+      indent(out) << dest << ".insert(" << evar << ");" << '\n';
+    }
+    indent_down();
+    indent(out) << "}" << '\n';
+    return;
+  }
+
+  if (type->is_map()) {
+    t_map* tmap = (t_map*)type;
+    t_type* ktype = tmap->get_key_type();
+    t_type* vtype = tmap->get_val_type();
+    string evar = tmp("_ce");
+    indent(out) << dest << ".clear();" << '\n';
+    indent(out) << "for (const auto& " << evar << " : " << src << ") {" << '\n';
+    indent_up();
+    string kdest = tmp("_ckk");
+    string vdest = tmp("_cvv");
+    indent(out) << type_name(ktype) << " " << kdest << ";" << '\n';
+    indent(out) << type_name(vtype) << " " << vdest << ";" << '\n';
+    generate_from_pure_value(out, ktype, kdest, evar + ".first", false);
+    generate_from_pure_value(out, vtype, vdest, evar + ".second", false);
+    indent(out) << dest << ".emplace(::std::move(" << kdest << "), ::std::move(" << vdest
+                << "));" << '\n';
+    indent_down();
+    indent(out) << "}" << '\n';
+    return;
+  }
+
+  indent(out) << dest << " = " << src << ";" << '\n';
+}
+
+void t_cpp_generator::generate_pure_convert_enum_decl(ostream& out, t_enum* tenum) {
+  string classic = type_name(tenum);
+  string pure = "pure::" + tenum->get_name();
+  indent(out) << pure << " to_pure(const " << classic << "& src);" << '\n';
+  indent(out) << classic << " from_pure(const " << pure << "& src);" << '\n' << '\n';
+}
+
+void t_cpp_generator::generate_pure_convert_enum_defn(ostream& out, t_enum* tenum) {
+  string classic = type_name(tenum);
+  string pure = "pure::" + tenum->get_name();
+
+  indent(out) << pure << " to_pure(const " << classic << "& src) {" << '\n';
+  indent_up();
+  indent(out) << "return static_cast<" << pure << ">(static_cast<int>(src));" << '\n';
+  indent_down();
+  indent(out) << "}" << '\n' << '\n';
+
+  indent(out) << classic << " from_pure(const " << pure << "& src) {" << '\n';
+  indent_up();
+  indent(out) << "return static_cast<" << classic << ">(static_cast<int>(src));" << '\n';
+  indent_down();
+  indent(out) << "}" << '\n' << '\n';
+}
+
+void t_cpp_generator::generate_pure_convert_struct_decl(ostream& out, t_struct* tstruct) {
+  string classic = tstruct->get_name();
+  string pure = "pure::" + tstruct->get_name();
+  indent(out) << pure << " to_pure(const " << classic << "& src);" << '\n';
+  indent(out) << classic << " from_pure(const " << pure << "& src);" << '\n' << '\n';
+}
+
+void t_cpp_generator::generate_pure_convert_union_defn(ostream& out, t_struct* tstruct) {
+  string classic = tstruct->get_name();
+  string pure = "pure::" + tstruct->get_name();
+  const vector<t_field*>& members = tstruct->get_members();
+
+  // to_pure
+  indent(out) << pure << " to_pure(const " << classic << "& src) {" << '\n';
+  indent_up();
+  indent(out) << pure << " dest;" << '\n';
+  bool first = true;
+  for (auto* field : members) {
+    string fname = field->get_name();
+    string isset = "src.__isset." + fname;
+    if (first) {
+      indent(out) << "if (" << isset << ") {" << '\n';
+      first = false;
+    } else {
+      indent(out) << "} else if (" << isset << ") {" << '\n';
+    }
+    indent_up();
+    string pure_ft = pure_fq_type_name(field->get_type());
+    if (is_reference(field)) {
+      pure_ft = "::std::shared_ptr<" + pure_ft + ">";
+    }
+    string tmpv = tmp("_uv");
+    indent(out) << pure_ft << " " << tmpv << ";" << '\n';
+    generate_to_pure_value(out, field->get_type(), tmpv, "src." + fname, is_reference(field));
+    indent(out) << "dest.set_" << fname << "(::std::move(" << tmpv << "));" << '\n';
+    indent_down();
+  }
+  if (!members.empty()) {
+    indent(out) << "}" << '\n';
+  }
+  indent(out) << "return dest;" << '\n';
+  indent_down();
+  indent(out) << "}" << '\n' << '\n';
+
+  // from_pure
+  indent(out) << classic << " from_pure(const " << pure << "& src) {" << '\n';
+  indent_up();
+  indent(out) << classic << " dest;" << '\n';
+  indent(out) << "switch (src.get_field_id()) {" << '\n';
+  indent_up();
+  indent(out) << "case " << pure << "::field_id::__EMPTY__:" << '\n';
+  indent_up();
+  indent(out) << "break;" << '\n';
+  indent_down();
+  for (auto* field : members) {
+    string fname = field->get_name();
+    indent(out) << "case " << pure << "::field_id::" << fname << ": {" << '\n';
+    indent_up();
+    string classic_ft = type_name(field->get_type());
+    if (is_reference(field)) {
+      classic_ft = "::std::shared_ptr<" + classic_ft + ">";
+    }
+    string tmpv = tmp("_cv");
+    indent(out) << classic_ft << " " << tmpv << ";" << '\n';
+    generate_from_pure_value(out, field->get_type(), tmpv, "src.get_" + fname + "()",
+                             is_reference(field));
+    indent(out) << "dest.__set_" << fname << "(" << tmpv << ");" << '\n';
+    indent(out) << "break;" << '\n';
+    indent_down();
+    indent(out) << "}" << '\n';
+  }
+  indent_down();
+  indent(out) << "}" << '\n';
+  indent(out) << "return dest;" << '\n';
+  indent_down();
+  indent(out) << "}" << '\n' << '\n';
+}
+
+void t_cpp_generator::generate_pure_convert_struct_defn(ostream& out, t_struct* tstruct) {
+  if (tstruct->is_union()) {
+    generate_pure_convert_union_defn(out, tstruct);
+    return;
+  }
+
+  string classic = tstruct->get_name();
+  string pure = "pure::" + tstruct->get_name();
+  const vector<t_field*>& members = tstruct->get_members();
+
+  // ---- to_pure ----
+  indent(out) << pure << " to_pure(const " << classic << "& src) {" << '\n';
+  indent_up();
+  indent(out) << pure << " dest;" << '\n';
+  for (auto* field : members) {
+    string fname = field->get_name();
+    bool is_opt = field->get_req() == t_field::T_OPTIONAL;
+    bool is_req = field->get_req() == t_field::T_REQUIRED;
+    bool ref = is_reference(field);
+
+    if (is_opt) {
+      indent(out) << "if (src.__isset." << fname << ") {" << '\n';
+      indent_up();
+      string pure_ft = pure_fq_type_name(field->get_type());
+      if (ref) {
+        pure_ft = "::std::shared_ptr<" + pure_ft + ">";
+      }
+      string tmpv = tmp("_pv");
+      indent(out) << pure_ft << " " << tmpv << ";" << '\n';
+      generate_to_pure_value(out, field->get_type(), tmpv, "src." + fname, ref);
+      indent(out) << "dest." << fname << " = ::std::move(" << tmpv << ");" << '\n';
+      indent_down();
+      indent(out) << "}" << '\n';
+    } else {
+      generate_to_pure_value(out, field->get_type(), "dest." + fname, "src." + fname, ref);
+      (void)is_req;
+    }
+  }
+  indent(out) << "return dest;" << '\n';
+  indent_down();
+  indent(out) << "}" << '\n' << '\n';
+
+  // ---- from_pure ----
+  indent(out) << classic << " from_pure(const " << pure << "& src) {" << '\n';
+  indent_up();
+  indent(out) << classic << " dest;" << '\n';
+  for (auto* field : members) {
+    string fname = field->get_name();
+    bool is_opt = field->get_req() == t_field::T_OPTIONAL;
+    bool is_req = field->get_req() == t_field::T_REQUIRED;
+    bool ref = is_reference(field);
+
+    if (is_opt) {
+      indent(out) << "if (src." << fname << ".has_value()) {" << '\n';
+      indent_up();
+      string classic_ft = type_name(field->get_type());
+      if (ref) {
+        classic_ft = "::std::shared_ptr<" + classic_ft + ">";
+      }
+      string tmpv = tmp("_cv");
+      indent(out) << classic_ft << " " << tmpv << ";" << '\n';
+      generate_from_pure_value(out, field->get_type(), tmpv, "(*src." + fname + ")", ref);
+      indent(out) << "dest." << fname << " = ::std::move(" << tmpv << ");" << '\n';
+      indent(out) << "dest.__isset." << fname << " = true;" << '\n';
+      indent_down();
+      indent(out) << "} else {" << '\n';
+      indent_up();
+      indent(out) << "dest.__isset." << fname << " = false;" << '\n';
+      indent_down();
+      indent(out) << "}" << '\n';
+    } else {
+      generate_from_pure_value(out, field->get_type(), "dest." + fname, "src." + fname, ref);
+      if (!is_req) {
+        // Default fields have __isset in classic generated code.
+        indent(out) << "dest.__isset." << fname << " = true;" << '\n';
+      }
+    }
+  }
+  indent(out) << "return dest;" << '\n';
+  indent_down();
+  indent(out) << "}" << '\n' << '\n';
+}
+
+/**
+ * Emit *_types_pure_convert.h and *_types_pure_convert.cpp with to_pure /
+ * from_pure free functions between classic and pure types.
+ */
+void t_cpp_generator::generate_pure_convert() {
+  string header_name = program_name_ + "_types_pure_convert.h";
+  string impl_name = program_name_ + "_types_pure_convert.cpp";
+  string f_header_path = get_out_dir() + header_name;
+  string f_impl_path = get_out_dir() + impl_name;
+
+  ofstream_with_content_based_conditional_update f_hdr;
+  ofstream_with_content_based_conditional_update f_impl;
+  f_hdr.open(f_header_path);
+  f_impl.open(f_impl_path);
+
+  f_hdr << autogen_comment();
+  f_impl << autogen_comment();
+
+  f_hdr << "#ifndef " << program_name_ << "_TYPES_PURE_CONVERT_H" << '\n'
+        << "#define " << program_name_ << "_TYPES_PURE_CONVERT_H" << '\n' << '\n';
+
+  f_hdr << "#include \"" << get_include_prefix(*get_program()) << program_name_ << "_types.h\""
+        << '\n';
+  f_hdr << "#include \"" << get_include_prefix(*get_program()) << program_name_
+        << "_types_pure.h\"" << '\n' << '\n';
+
+  // Included programs' converters (for nested included types).
+  const vector<t_program*>& includes = program_->get_includes();
+  for (auto include : includes) {
+    f_hdr << "#include \"" << get_include_prefix(*include)
+          << get_legal_program_name(include->get_name()) << "_types_pure_convert.h\"" << '\n';
+  }
+  if (!includes.empty()) {
+    f_hdr << '\n';
+  }
+
+  f_impl << "#include \"" << get_include_prefix(*get_program()) << header_name << "\"" << '\n'
+         << '\n';
+
+  f_hdr << ns_open_ << '\n' << '\n';
+  f_impl << ns_open_ << '\n' << '\n';
+
+  // Declarations
+  for (auto* tenum : program_->get_enums()) {
+    generate_pure_convert_enum_decl(f_hdr, tenum);
+  }
+  for (auto* tstruct : program_->get_objects()) {
+    generate_pure_convert_struct_decl(f_hdr, tstruct);
+  }
+
+  // Definitions
+  for (auto* tenum : program_->get_enums()) {
+    generate_pure_convert_enum_defn(f_impl, tenum);
+  }
+  for (auto* tstruct : program_->get_objects()) {
+    generate_pure_convert_struct_defn(f_impl, tstruct);
+  }
+
+  f_hdr << ns_close_ << '\n' << '\n';
+  f_hdr << "#endif // " << program_name_ << "_TYPES_PURE_CONVERT_H" << '\n';
+
+  f_impl << ns_close_ << '\n';
+
+  f_hdr.close();
+  f_impl.close();
+}
+
 
 THRIFT_REGISTER_GENERATOR(
     cpp,
@@ -5615,6 +6175,8 @@ THRIFT_REGISTER_GENERATOR(
     "                     fields, std::variant for unions). The pure header has no\n"
     "                     thrift runtime deps (only std + thrift types like TUuid).\n"
     "                     Classic *_types.h is still generated unchanged.\n"
+    "                     Also emits *_types_pure_convert.h/.cpp with to_pure() and\n"
+    "                     from_pure() converters between classic and pure types.\n"
     "    include_prefix:  Use full include paths in generated files.\n"
     "    moveable_types:  Generate move constructors and assignment operators.\n"
     "                     When 'moveable_types=forward_setter', also generate setters\n"

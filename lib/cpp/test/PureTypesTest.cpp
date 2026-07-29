@@ -41,9 +41,9 @@
 #include "gen-cpp-pure/OptionalRequiredTest_types_pure.h"
 #include "gen-cpp-pure/Recursive_types_pure.h"
 
-// Classic header only needed to verify coexistence with pure types.
-#include "gen-cpp-pure/OptionalRequiredTest_types.h"
-#include "gen-cpp-pure/Recursive_types.h"
+// Classic header + convert helpers (to_pure / from_pure).
+#include "gen-cpp-pure/OptionalRequiredTest_types_pure_convert.h"
+#include "gen-cpp-pure/Recursive_types_pure_convert.h"
 
 #define BOOST_TEST_MODULE PureTypesTest
 #include <boost/test/unit_test.hpp>
@@ -168,6 +168,114 @@ BOOST_AUTO_TEST_CASE(pure_and_classic_types_coexist) {
   BOOST_REQUIRE(pure_s.im_optional.has_value());
   BOOST_CHECK_EQUAL(classic.im_optional, *pure_s.im_optional);
   BOOST_CHECK(classic.__isset.im_optional);
+}
+
+// ---------------------------------------------------------------------------
+// to_pure / from_pure conversions
+// ---------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(pure_convert_optional_roundtrip) {
+  using thrift::test::to_pure;
+  using thrift::test::from_pure;
+
+  thrift::test::Simple classic;
+  classic.im_default = 1;
+  classic.im_required = 2;
+  classic.__isset.im_optional = true;
+  classic.im_optional = 3;
+
+  thrift::test::pure::Simple p = to_pure(classic);
+  BOOST_CHECK_EQUAL(p.im_default, 1);
+  BOOST_CHECK_EQUAL(p.im_required, 2);
+  BOOST_REQUIRE(p.im_optional.has_value());
+  BOOST_CHECK_EQUAL(*p.im_optional, 3);
+
+  thrift::test::Simple back = from_pure(p);
+  BOOST_CHECK_EQUAL(back.im_default, 1);
+  BOOST_CHECK_EQUAL(back.im_required, 2);
+  BOOST_CHECK(back.__isset.im_optional);
+  BOOST_CHECK_EQUAL(back.im_optional, 3);
+
+  // Unset optional stays unset through conversion.
+  classic.__isset.im_optional = false;
+  thrift::test::pure::Simple p2 = to_pure(classic);
+  BOOST_CHECK(!p2.im_optional.has_value());
+  thrift::test::Simple back2 = from_pure(p2);
+  BOOST_CHECK(!back2.__isset.im_optional);
+}
+
+BOOST_AUTO_TEST_CASE(pure_convert_nested_struct_roundtrip) {
+  using thrift::test::to_pure;
+  using thrift::test::from_pure;
+
+  thrift::test::Complex classic;
+  classic.cp_default = 1;
+  classic.cp_required = 2;
+  classic.__isset.cp_optional = true;
+  classic.cp_optional = 3;
+  classic.req_simp.im_required = 4;
+  classic.req_simp.__isset.im_optional = true;
+  classic.req_simp.im_optional = 5;
+  classic.__isset.opt_simp = true;
+  classic.opt_simp.im_default = 6;
+  classic.opt_simp.im_required = 7;
+
+  thrift::test::Simple mapped;
+  mapped.im_required = 8;
+  classic.the_map[10] = mapped;
+
+  thrift::test::pure::Complex p = to_pure(classic);
+  BOOST_CHECK_EQUAL(p.cp_required, 2);
+  BOOST_REQUIRE(p.cp_optional.has_value());
+  BOOST_CHECK_EQUAL(*p.cp_optional, 3);
+  BOOST_CHECK_EQUAL(p.req_simp.im_required, 4);
+  BOOST_REQUIRE(p.req_simp.im_optional.has_value());
+  BOOST_CHECK_EQUAL(*p.req_simp.im_optional, 5);
+  BOOST_REQUIRE(p.opt_simp.has_value());
+  BOOST_CHECK_EQUAL(p.opt_simp->im_default, 6);
+  BOOST_REQUIRE_EQUAL(p.the_map.size(), 1u);
+  BOOST_CHECK_EQUAL(p.the_map.at(10).im_required, 8);
+
+  thrift::test::Complex back = from_pure(p);
+  BOOST_CHECK_EQUAL(back.cp_required, 2);
+  BOOST_CHECK(back.__isset.cp_optional);
+  BOOST_CHECK_EQUAL(back.cp_optional, 3);
+  BOOST_CHECK(back.__isset.opt_simp);
+  BOOST_CHECK_EQUAL(back.opt_simp.im_default, 6);
+  BOOST_CHECK_EQUAL(back.the_map[10].im_required, 8);
+}
+
+BOOST_AUTO_TEST_CASE(pure_convert_union_and_recursive_roundtrip) {
+  // Recursive.thrift has no cpp namespace — converters are in the global scope.
+
+  RecList classic_list;
+  classic_list.item = 1;
+  classic_list.nextitem = std::make_shared<RecList>();
+  classic_list.nextitem->item = 2;
+
+  pure::RecList pure_list = to_pure(classic_list);
+  BOOST_CHECK_EQUAL(pure_list.item, 1);
+  BOOST_REQUIRE(pure_list.nextitem);
+  BOOST_CHECK_EQUAL(pure_list.nextitem->item, 2);
+
+  RecList back_list = from_pure(pure_list);
+  BOOST_CHECK_EQUAL(back_list.item, 1);
+  BOOST_REQUIRE(back_list.nextitem);
+  BOOST_CHECK_EQUAL(back_list.nextitem->item, 2);
+
+  CoUnion classic_u;
+  classic_u.__set_other(std::make_shared<CoUnion2>());
+  classic_u.other->__set_other(CoUnion());
+
+  pure::CoUnion pure_u = to_pure(classic_u);
+  BOOST_CHECK(pure_u.is_set_other());
+  BOOST_REQUIRE(pure_u.get_other());
+  BOOST_CHECK(pure_u.get_other()->is_set_other());
+
+  CoUnion back_u = from_pure(pure_u);
+  BOOST_CHECK(back_u.__isset.other);
+  BOOST_REQUIRE(back_u.other);
+  BOOST_CHECK(back_u.other->__isset.other);
 }
 
 // ---------------------------------------------------------------------------
