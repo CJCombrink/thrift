@@ -5529,6 +5529,18 @@ void t_cpp_generator::generate_pure_struct(std::ostream& out, t_struct* tstruct)
     indent(out) << pure_declare_field(*m_iter) << '\n';
   }
 
+  // Empty structs used as set/map keys need ordering (mirrors classic extras
+  // such as DebugProtoTest Empty::operator<).
+  if (members.empty()) {
+    out << '\n';
+    indent(out) << "bool operator==(const " << tstruct->get_name()
+                << "&) const { return true; }" << '\n';
+    indent(out) << "bool operator!=(const " << tstruct->get_name()
+                << "&) const { return false; }" << '\n';
+    indent(out) << "bool operator<(const " << tstruct->get_name()
+                << "&) const { return false; }" << '\n';
+  }
+
   indent_down();
   indent(out) << "};" << '\n' << '\n';
 }
@@ -6021,6 +6033,9 @@ void t_cpp_generator::generate_pure_convert_struct_defn(ostream& out, t_struct* 
   // ---- to_pure ----
   indent(out) << pure << " to_pure(const " << classic << "& src) {" << '\n';
   indent_up();
+  if (members.empty()) {
+    indent(out) << "(void)src;" << '\n';
+  }
   indent(out) << pure << " dest;" << '\n';
   for (auto* field : members) {
     string fname = field->get_name();
@@ -6040,6 +6055,11 @@ void t_cpp_generator::generate_pure_convert_struct_defn(ostream& out, t_struct* 
       generate_to_pure_value(out, field->get_type(), tmpv, "src." + fname, ref);
       indent(out) << "dest." << fname << " = ::std::move(" << tmpv << ");" << '\n';
       indent_down();
+      indent(out) << "} else {" << '\n';
+      indent_up();
+      // Clear any pure default-member initializer so unset stays unset.
+      indent(out) << "dest." << fname << " = ::std::nullopt;" << '\n';
+      indent_down();
       indent(out) << "}" << '\n';
     } else {
       generate_to_pure_value(out, field->get_type(), "dest." + fname, "src." + fname, ref);
@@ -6053,6 +6073,9 @@ void t_cpp_generator::generate_pure_convert_struct_defn(ostream& out, t_struct* 
   // ---- from_pure ----
   indent(out) << classic << " from_pure(const " << pure << "& src) {" << '\n';
   indent_up();
+  if (members.empty()) {
+    indent(out) << "(void)src;" << '\n';
+  }
   indent(out) << classic << " dest;" << '\n';
   for (auto* field : members) {
     string fname = field->get_name();

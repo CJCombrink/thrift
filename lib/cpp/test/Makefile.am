@@ -40,7 +40,10 @@ BUILT_SOURCES = gen-cpp/AnnotationTest_types.h \
                 gen-cpp-pure/OptionalRequiredTest_types_pure_convert.h \
                 gen-cpp-pure/Recursive_types.h \
                 gen-cpp-pure/Recursive_types_pure.h \
-                gen-cpp-pure/Recursive_types_pure_convert.h
+                gen-cpp-pure/Recursive_types_pure_convert.h \
+                gen-cpp-pure/DebugProtoTest_types.h \
+                gen-cpp-pure/DebugProtoTest_types_pure.h \
+                gen-cpp-pure/DebugProtoTest_types_pure_convert.h
 
 noinst_LTLIBRARIES = libtestgencpp.la libprocessortest.la
 nodist_libtestgencpp_la_SOURCES = \
@@ -119,7 +122,8 @@ check_PROGRAMS = \
 	EnumTest \
 	RenderedDoubleConstantsTest \
 	AnnotationTest \
-	PureTypesTest
+	PureTypesTest \
+	PureProtocolTest
 
 if AMX_HAVE_LIBEVENT
 noinst_PROGRAMS += \
@@ -281,6 +285,27 @@ PureTypesTest_LDADD = \
 
 # pure types require C++17 (std::optional / std::variant); C++23-compatible
 PureTypesTest_CXXFLAGS = $(AM_CXXFLAGS) -std=c++17
+
+#
+# PureProtocolTest — pure↔classic wire equivalence across protocols
+#
+PureProtocolTest_SOURCES = \
+	PureProtocolTest.cpp \
+	DebugProtoTest_extras.cpp
+
+nodist_PureProtocolTest_SOURCES = \
+	gen-cpp-pure/OptionalRequiredTest_types.cpp \
+	gen-cpp-pure/OptionalRequiredTest_types_pure_convert.cpp \
+	gen-cpp-pure/Recursive_types.cpp \
+	gen-cpp-pure/Recursive_types_pure_convert.cpp \
+	gen-cpp-pure/DebugProtoTest_types.cpp \
+	gen-cpp-pure/DebugProtoTest_types_pure_convert.cpp
+
+PureProtocolTest_LDADD = \
+  $(top_builddir)/lib/cpp/libthrift.la \
+  $(BOOST_TEST_LDADD)
+
+PureProtocolTest_CXXFLAGS = $(AM_CXXFLAGS) -std=c++17
 
 TFileTransportTest_SOURCES = \
 	TFileTransportTest.cpp
@@ -512,6 +537,10 @@ gen-cpp-pure/OptionalRequiredTest_types.cpp gen-cpp-pure/OptionalRequiredTest_ty
 	$(THRIFT) -out gen-cpp-pure --gen cpp:pure,no_skeleton $<
 
 gen-cpp-pure/Recursive_types.cpp gen-cpp-pure/Recursive_types.h gen-cpp-pure/Recursive_types_pure.h gen-cpp-pure/Recursive_types_pure_convert.h gen-cpp-pure/Recursive_types_pure_convert.cpp: $(top_srcdir)/test/Recursive.thrift
+	$(MKDIR_P) gen-cpp-pure
+	$(THRIFT) -out gen-cpp-pure --gen cpp:pure,no_skeleton $<
+
+gen-cpp-pure/DebugProtoTest_types.cpp gen-cpp-pure/DebugProtoTest_types.h gen-cpp-pure/DebugProtoTest_types_pure.h gen-cpp-pure/DebugProtoTest_types_pure_convert.h gen-cpp-pure/DebugProtoTest_types_pure_convert.cpp: $(top_srcdir)/test/DebugProtoTest.thrift
 	$(MKDIR_P) gen-cpp-pure
 	$(THRIFT) -out gen-cpp-pure --gen cpp:pure,no_skeleton $<
 

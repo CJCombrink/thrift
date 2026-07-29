@@ -309,6 +309,34 @@ target_link_libraries(PureTypesTest
 target_link_libraries(PureTypesTest thrift)
 add_test(NAME PureTypesTest COMMAND PureTypesTest)
 
+add_custom_command(OUTPUT gen-cpp-pure/DebugProtoTest_types.cpp
+                          gen-cpp-pure/DebugProtoTest_types.h
+                          gen-cpp-pure/DebugProtoTest_types_pure.h
+                          gen-cpp-pure/DebugProtoTest_types_pure_convert.h
+                          gen-cpp-pure/DebugProtoTest_types_pure_convert.cpp
+    COMMAND ${CMAKE_COMMAND} -E make_directory gen-cpp-pure
+    COMMAND ${THRIFT_COMPILER} -out gen-cpp-pure --gen cpp:pure,no_skeleton
+            ${PROJECT_SOURCE_DIR}/test/DebugProtoTest.thrift
+    DEPENDS ${PROJECT_SOURCE_DIR}/test/DebugProtoTest.thrift
+    ${THRIFT_COMPILER}
+)
+add_executable(PureProtocolTest
+    PureProtocolTest.cpp
+    DebugProtoTest_extras.cpp
+    gen-cpp-pure/OptionalRequiredTest_types.cpp
+    gen-cpp-pure/OptionalRequiredTest_types_pure_convert.cpp
+    gen-cpp-pure/Recursive_types.cpp
+    gen-cpp-pure/Recursive_types_pure_convert.cpp
+    gen-cpp-pure/DebugProtoTest_types.cpp
+    gen-cpp-pure/DebugProtoTest_types_pure_convert.cpp
+)
+target_compile_features(PureProtocolTest PRIVATE cxx_std_17)
+target_link_libraries(PureProtocolTest
+    ${Boost_LIBRARIES}
+)
+target_link_libraries(PureProtocolTest thrift)
+add_test(NAME PureProtocolTest COMMAND PureProtocolTest)
+
 add_executable(RecursiveTest RecursiveTest.cpp)
 target_link_libraries(RecursiveTest
     testgencpp
